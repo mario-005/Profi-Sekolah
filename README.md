@@ -110,19 +110,3 @@ Jika Anda menggunakan editor kode seperti **Visual Studio Code**:
 2. Buka folder proyek ini di VS Code.
 3. Klik tombol **"Go Live"** di bilah status kanan bawah VS Code.
 4. Aplikasi akan berjalan pada alamat lokal `http://127.0.0.1:5500/index.html` lengkap dengan fitur *hot-reload* otomatis setiap kali Anda melakukan perubahan kode.
-
----
-
-## 📝 Catatan Kustomisasi Konten
-
-1. **Mengubah Pilihan Data Pengaduan Awal**:
-   Untuk memperbarui atau menambah data pelacakan aspirasi default, Anda dapat membuka file [script.js](file:///d:/Project%20Mario/Profile-Sekolah/script.js) dan menyesuaikan isi array `localAspirations` di baris ke-196.
-2. **Mengubah Target Counter Statistik**:
-   Untuk mengubah jumlah Siswa, Guru, atau Rombongan Belajar, Anda hanya perlu mengganti atribut `data-target` pada elemen HTML kelas `.counter` di [index.html](file:///d:/Project%20Mario/Profile-Sekolah/index.html).
-
----
-
-## 📄 Lisensi & Hak Cipta
-
-© 2026 SDN Tunas Mekar. Dikelola oleh Tim Humas dan Teknologi Informasi SDN Tunas Mekar Kota Cimahi.
-Dibuat dengan 💖 untuk kemajuan pendidikan anak bangsa.
