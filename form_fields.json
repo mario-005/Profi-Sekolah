@@ -1,0 +1,65 @@
+{
+  "action": null,
+  "fields": [
+    [
+      "ID Pendaftaran",
+      1888602263
+    ],
+    [
+      "Tanggal Pengisian Formulir (DD/MM/YYYY)",
+      150206719
+    ],
+    [
+      "Nama Lengkap Siswa",
+      1334280073
+    ],
+    [
+      "Nomor Induk Kependudukan (NIK) Siswa",
+      1402434435
+    ],
+    [
+      "Tanggal Lahir Siswa (DD/MM/YYYY)",
+      865198982
+    ],
+    [
+      "Jenis Kelamin (Laki-laki/Perempuan)",
+      1875077086
+    ],
+    [
+      "Jalur Pendaftaran (misalnya Zonasi/Prestasi/Afirmasi)",
+      1603866552
+    ],
+    [
+      "Nama Lengkap Orang Tua/Wali",
+      1545311289
+    ],
+    [
+      "Alamat Email",
+      2092293265
+    ],
+    [
+      "Nomor Telepon/HP",
+      1374736855
+    ],
+    [
+      "Nama File Foto Siswa (misalnya: 'nama-file.jpg')",
+      1475751901
+    ],
+    [
+      "Nama File Kartu Keluarga (KK) (misalnya: 'nama-file.pdf')",
+      880731211
+    ],
+    [
+      "Nama File Akta Kelahiran (misalnya: 'nama-file.pdf')",
+      1172729308
+    ],
+    [
+      "Nama File Kartu Identitas Anak (KIA) (misalnya: 'nama-file.pdf')",
+      252286770
+    ],
+    [
+      "Status Pendaftaran (misalnya: 'Baru/Proses/Diterima')",
+      1008215135
+    ]
+  ]
+}
