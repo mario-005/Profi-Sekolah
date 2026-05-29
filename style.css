@@ -2637,13 +2637,13 @@ select.form-input {
     background-color: #f59e0b;
     color: #ffffff;
 }
-margin-bottom: 6px;
+/* margin-bottom: 6px;
     display: flex;
     align-items: flex-start;
     gap: 8px;
     line-height: 1.4;
     text-align: left;
-}
+} */
 
 .req-list li i {
     font-size: 14px;
