@@ -2558,6 +2558,42 @@ select.form-input {
     max-width: 280px;
 }
 
+/* Galeri status box (Supabase) */
+.galeri-status-box {
+    padding: 12px 16px;
+    border-radius: 10px;
+    font-size: 13px;
+    line-height: 1.5;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.galeri-status-box i {
+    font-size: 20px;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.galeri-status-box.status-ok {
+    background-color: rgba(16, 185, 129, 0.08);
+    color: #047857;
+    border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.galeri-status-box.status-warn {
+    background-color: rgba(245, 158, 11, 0.08);
+    color: #b45309;
+    border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.galeri-status-box.status-err {
+    background-color: rgba(239, 68, 68, 0.08);
+    color: #b91c1c;
+    border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
 /* Form Styling in Admin */
 .admin-form-box {
     background: #f8fafc;
@@ -3234,6 +3270,15 @@ select.form-input {
 }
 .custom-alert-warning .custom-alert-btn:hover {
     background-color: #d97706;
+    transform: translateY(-2px);
+}
+
+.custom-alert-btn.custom-alert-btn-secondary {
+    background-color: #e2e8f0;
+    color: #475569;
+}
+.custom-alert-btn.custom-alert-btn-secondary:hover {
+    background-color: #cbd5e1;
     transform: translateY(-2px);
 }
 

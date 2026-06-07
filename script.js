@@ -591,6 +591,226 @@ async function uploadFileToGAS(gasUrl, file, onProgress) {
 }
 
 // =========================================
+// HELPER: Upload file to Supabase Storage
+// =========================================
+function getSupabaseConfig() {
+    return {
+        url:    (localStorage.getItem(L_KEY_SUPABASE_URL) || '').trim().replace(/\/+$/, ''),
+        key:    (localStorage.getItem(L_KEY_SUPABASE_KEY) || '').trim(),
+        bucket: (localStorage.getItem(L_KEY_SUPABASE_BUCKET) || 'gallery').trim() || 'gallery'
+    };
+}
+
+function isSupabaseConfigured() {
+    const cfg = getSupabaseConfig();
+    return !!(cfg.url && cfg.key);
+}
+
+async function uploadFileToSupabase(file, onProgress) {
+    if (!window.supabase || typeof window.supabase.createClient !== 'function') {
+        throw new Error('Supabase JS SDK belum dimuat. Periksa koneksi internet Anda.');
+    }
+
+    const cfg = getSupabaseConfig();
+    if (!cfg.url || !cfg.key) {
+        throw new Error('Supabase URL / Key belum dikonfigurasi di admin panel (tab Statistik & Info Sekolah).');
+    }
+
+    const supabase = window.supabase.createClient(cfg.url, cfg.key);
+
+    // Tentukan folder & nama file unik
+    const isVideo = (file.type || '').startsWith('video');
+    const folder  = isVideo ? 'videos' : 'photos';
+    const ext     = (file.name.split('.').pop() || (isVideo ? 'mp4' : 'jpg')).toLowerCase();
+    const rand    = Math.random().toString(36).substring(2, 8);
+    const cleanName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_').replace(/\.[^.]+$/, '');
+    const path    = `${folder}/${Date.now()}-${rand}-${cleanName}.${ext}`;
+
+    // Upload dengan progress tracking via XHR-style onProgress
+    return new Promise(async (resolve, reject) => {
+        try {
+            const { data, error } = await supabase.storage
+                .from(cfg.bucket)
+                .upload(path, file, {
+                    cacheControl: '3600',
+                    upsert: false,
+                    contentType: file.type || 'application/octet-stream'
+                });
+
+            if (error) {
+                reject(new Error(error.message || 'Upload ke Supabase gagal'));
+                return;
+            }
+
+            // Dapatkan public URL
+            const { data: pubData } = supabase.storage
+                .from(cfg.bucket)
+                .getPublicUrl(data.path);
+
+            if (onProgress) onProgress(100);
+            resolve(pubData.publicUrl);
+        } catch (err) {
+            reject(err);
+        }
+    });
+}
+
+// Test koneksi Supabase (cek bucket exists & accessible)
+async function testSupabaseConnection() {
+    if (!window.supabase || typeof window.supabase.createClient !== 'function') {
+        return { ok: false, message: 'Supabase JS SDK tidak tersedia. Periksa koneksi internet.' };
+    }
+    const cfg = getSupabaseConfig();
+    if (!cfg.url || !cfg.key) {
+        return { ok: false, message: 'URL atau Key Supabase belum diisi.' };
+    }
+    try {
+        const supabase = window.supabase.createClient(cfg.url, cfg.key);
+
+        // Method 1: Cek dengan list() — paling reliable untuk publishable key
+        const { data, error } = await supabase.storage.from(cfg.bucket).list('', { limit: 1 });
+
+        if (error) {
+            // Method 2: Fallback getBucket (untuk legacy)
+            const { data: bucketData, error: bucketErr } = await supabase.storage.getBucket(cfg.bucket);
+            if (bucketErr) {
+                return {
+                    ok: false,
+                    message: `Bucket "<strong>${cfg.bucket}</strong>" tidak ditemukan. <br><br>
+                        <strong>Solusi:</strong><br>
+                        1. Buka <em>Supabase Dashboard → Storage → New bucket</em><br>
+                        2. Nama bucket harus persis: <code>${cfg.bucket}</code> (huruf kecil)<br>
+                        3. Centang <strong>Public bucket</strong><br>
+                        4. Pastikan RLS Policy mengizinkan <code>anon</code> untuk SELECT/INSERT<br><br>
+                        <em>Detail error: ${error.message || bucketErr.message}</em>`
+                };
+            }
+            const isPublic = bucketData && bucketData.public;
+            return { ok: true, message: `Terhubung! Bucket "<strong>${cfg.bucket}</strong>" ${isPublic ? '<span style="color:#059669">(Public ✓)</span>' : '<span style="color:#dc2626">(PRIVATE — file TIDAK akan bisa diakses publik!)</span>'}` };
+        }
+
+        // Test apakah bucket benar-benar public dengan mencoba akses public URL
+        const { data: pubData } = supabase.storage.from(cfg.bucket).getPublicUrl('_test_visibility_check_');
+        const isPublic = pubData && pubData.publicUrl && pubData.publicUrl.includes('/storage/v1/object/public/');
+
+        return {
+            ok: true,
+            message: `Terhubung! Bucket "<strong>${cfg.bucket}</strong>" ${isPublic ? '<span style="color:#059669">(Public ✓ — siap upload)</span>' : '<span style="color:#dc2626">(PRIVATE — file tidak akan bisa diakses publik! Centang "Public bucket" di Supabase)</span>'}`
+        };
+    } catch (err) {
+        return { ok: false, message: `Gagal terhubung: <strong>${err.message}</strong><br><br>Pastikan URL dan Key Supabase benar.` };
+    }
+}
+
+// Test koneksi dari admin panel (menggunakan nilai form saat ini, belum disimpan)
+async function testSupabaseFromAdmin() {
+    const urlEl    = document.getElementById('dbSupabaseUrl');
+    const keyEl    = document.getElementById('dbSupabaseKey');
+    const bucketEl = document.getElementById('dbSupabaseBucket');
+    const statusEl = document.getElementById('supabaseStatus');
+
+    if (!statusEl) return;
+
+    // Simpan nilai form ke localStorage dulu supaya getSupabaseConfig() membaca nilai form
+    if (urlEl)    localStorage.setItem(L_KEY_SUPABASE_URL, urlEl.value.trim());
+    if (keyEl)    localStorage.setItem(L_KEY_SUPABASE_KEY, keyEl.value.trim());
+    if (bucketEl) localStorage.setItem(L_KEY_SUPABASE_BUCKET, (bucketEl.value.trim() || 'gallery'));
+
+    statusEl.style.display = 'block';
+    statusEl.style.background = 'rgba(59, 130, 246, 0.08)';
+    statusEl.style.color = '#2563eb';
+    statusEl.style.border = '1px solid rgba(59, 130, 246, 0.2)';
+    statusEl.innerHTML = `<i class='bx bx-loader-alt bx-spin'></i> Menguji koneksi ke Supabase...`;
+
+    const result = await testSupabaseConnection();
+
+    if (result.ok) {
+        statusEl.style.background = 'rgba(16, 185, 129, 0.08)';
+        statusEl.style.color = '#059669';
+        statusEl.style.border = '1px solid rgba(16, 185, 129, 0.2)';
+        statusEl.innerHTML = `<i class='bx bx-check-circle'></i> ${result.message}`;
+    } else {
+        statusEl.style.background = 'rgba(239, 68, 68, 0.08)';
+        statusEl.style.color = '#dc2626';
+        statusEl.style.border = '1px solid rgba(239, 68, 68, 0.2)';
+        statusEl.innerHTML = `<i class='bx bx-error-circle'></i> ${result.message}`;
+    }
+
+    // Update juga status box di tab Galeri
+    updateGaleriSupabaseStatus();
+}
+
+// =========================================
+// HELPER: Update status Supabase di tab Galeri
+// =========================================
+function updateGaleriSupabaseStatus() {
+    const box = document.getElementById('galeriSupabaseStatus');
+    if (!box) return;
+
+    const cfg = getSupabaseConfig();
+    if (!cfg.url || !cfg.key) {
+        box.className = 'galeri-status-box status-warn';
+        box.innerHTML = `
+            <i class='bx bx-info-circle'></i>
+            <div>
+                <strong>Supabase belum dikonfigurasi.</strong><br>
+                Anda tetap bisa menambah item galeri dengan mengetik <strong>path/URL</strong> di kolom "Atau Tempelkan URL / Path Lokal" (mis. <code>asset/Foto.jpg</code>).<br>
+                Untuk upload file langsung dari admin, konfigurasikan Supabase di tab <em>Statistik &amp; Info Sekolah</em>.
+            </div>
+        `;
+        return;
+    }
+
+    // Configured - tampilkan status bucket (cek cepat)
+    box.className = 'galeri-status-box status-ok';
+    box.innerHTML = `
+        <i class='bx bx-check-circle'></i>
+        <div>
+            <strong>Supabase aktif</strong> &mdash; URL: <code>${cfg.url}</code>, Bucket: <code>${cfg.bucket}</code><br>
+            <small>Upload foto/video akan otomatis tersimpan di Supabase Storage. Klik "Tes Koneksi" di tab <em>Statistik &amp; Info Sekolah</em> untuk verifikasi bucket.</small>
+        </div>
+    `;
+}
+
+// =========================================
+// HELPER: Prompt fallback saat upload Supabase gagal
+// =========================================
+function showGaleriFallbackPrompt(messageHTML) {
+    return new Promise((resolve) => {
+        const overlay = document.createElement('div');
+        overlay.className = 'custom-alert-overlay';
+        overlay.innerHTML = `
+            <div class="custom-alert-box custom-alert-error">
+                <i class="custom-alert-icon bx bx-cloud-upload"></i>
+                <h4 class="custom-alert-title">Upload Supabase Gagal</h4>
+                <div class="custom-alert-message">${messageHTML}</div>
+                <div style="display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; justify-content: center;">
+                    <button class="custom-alert-btn custom-alert-btn-secondary" data-action="cancel">Batal</button>
+                    <button class="custom-alert-btn" data-action="fallback" style="background: #f59e0b;">Simpan sebagai Path Lokal (asset/)</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+        setTimeout(() => overlay.classList.add('show'), 10);
+
+        overlay.querySelector('[data-action="cancel"]').addEventListener('click', () => {
+            overlay.remove();
+            resolve(false);
+        });
+        overlay.querySelector('[data-action="fallback"]').addEventListener('click', () => {
+            overlay.remove();
+            resolve(true);
+        });
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) {
+                overlay.remove();
+                resolve(false);
+            }
+        });
+    });
+}
+
+// =========================================
 // HELPER: Progress Overlay Control
 // =========================================
 function showUploadOverlay(status, percent) {
@@ -949,6 +1169,9 @@ const L_KEY_PPDB = 'sdn_tunas_ppdb';
 const L_KEY_KALDIK_URL = 'sdn_tunas_kaldik_url';
 const L_KEY_GAS_URL = 'sdn_tunas_gas_url';
 const L_KEY_GALERI = 'sdn_tunas_galeri';
+const L_KEY_SUPABASE_URL = 'sdn_tunas_supabase_url';
+const L_KEY_SUPABASE_KEY = 'sdn_tunas_supabase_key';
+const L_KEY_SUPABASE_BUCKET = 'sdn_tunas_supabase_bucket';
 
 let selectedFiles = {
     FileFoto: null,
@@ -1141,18 +1364,23 @@ function switchAdminTab(tabId) {
     // Nonaktifkan semua tab button
     const tabs = document.querySelectorAll('.admin-tab-btn');
     tabs.forEach(t => t.classList.remove('active'));
-    
+
     // Nonaktifkan semua panel content
     const panels = document.querySelectorAll('.admin-panel-content');
     panels.forEach(p => p.classList.remove('active'));
-    
+
     // Cari tab button yang diklik dan aktifkan
     const activeBtn = Array.from(tabs).find(t => t.getAttribute('onclick').includes(tabId));
     if (activeBtn) activeBtn.classList.add('active');
-    
+
     // Aktifkan panel konten yang sesuai
     const activePanel = document.getElementById(tabId);
     if (activePanel) activePanel.classList.add('active');
+
+    // Refresh status Supabase di tab Galeri setiap kali dibuka
+    if (tabId === 'tab-galeri' && typeof updateGaleriSupabaseStatus === 'function') {
+        updateGaleriSupabaseStatus();
+    }
 }
 
 // 5. PENUTUP DASHBOARD MODAL
@@ -1328,6 +1556,14 @@ function loadAdminDashboardData() {
     if (dbInfoGasUrl) {
         dbInfoGasUrl.value = localStorage.getItem(L_KEY_GAS_URL) || '';
     }
+
+    // Pre-fill Konfigurasi Supabase
+    const dbSupabaseUrl    = document.getElementById('dbSupabaseUrl');
+    const dbSupabaseKey    = document.getElementById('dbSupabaseKey');
+    const dbSupabaseBucket = document.getElementById('dbSupabaseBucket');
+    if (dbSupabaseUrl)    dbSupabaseUrl.value    = localStorage.getItem(L_KEY_SUPABASE_URL)    || '';
+    if (dbSupabaseKey)    dbSupabaseKey.value    = localStorage.getItem(L_KEY_SUPABASE_KEY)    || '';
+    if (dbSupabaseBucket) dbSupabaseBucket.value = localStorage.getItem(L_KEY_SUPABASE_BUCKET) || 'gallery';
     
     // Render Tabel PPDB, Aspirasi & Berita di Admin
     renderAdminAspirations();
@@ -1336,6 +1572,7 @@ function loadAdminDashboardData() {
     renderAdminGaleri();
     setupGaleriUploadZone();
     bindAdminGaleriForm();
+    updateGaleriSupabaseStatus();
 }
 
 // 7. PANEL KELOLA ASPIRASI
@@ -1631,14 +1868,22 @@ if (adminProfileForm) {
         if (dbInfoGasUrl) {
             localStorage.setItem(L_KEY_GAS_URL, dbInfoGasUrl.value.trim());
         }
-        
+
+        // 4.7. Simpan Konfigurasi Supabase
+        const dbSupabaseUrl    = document.getElementById('dbSupabaseUrl');
+        const dbSupabaseKey    = document.getElementById('dbSupabaseKey');
+        const dbSupabaseBucket = document.getElementById('dbSupabaseBucket');
+        if (dbSupabaseUrl)    localStorage.setItem(L_KEY_SUPABASE_URL, dbSupabaseUrl.value.trim());
+        if (dbSupabaseKey)    localStorage.setItem(L_KEY_SUPABASE_KEY, dbSupabaseKey.value.trim());
+        if (dbSupabaseBucket) localStorage.setItem(L_KEY_SUPABASE_BUCKET, (dbSupabaseBucket.value.trim() || 'gallery'));
+
         // 5. Render Perubahan ke Publik UI secara instan!
         renderPublicUI();
-        
+
         // Tutup modal agar dapat melihat perubahannya
         const dbModal = document.getElementById('adminDashboardModal');
         if (dbModal) dbModal.classList.remove('show');
-        
+
         showAdminToast('Seluruh profil & statistik berhasil diperbarui!', 'success');
     });
 }
@@ -1922,23 +2167,76 @@ function bindAdminGaleriForm() {
 
         let src = urlInp;
 
-        // Jika user mengunggah file & GAS URL tersedia, upload ke Google Drive
+        // Prioritas upload: Supabase > Google Apps Script > fallback nama file
         if (file) {
-            const gasUrl = localStorage.getItem(L_KEY_GAS_URL) || '';
-            if (gasUrl) {
+            if (isSupabaseConfigured()) {
                 try {
-                    btnSubmit.innerHTML = `<i class='bx bx-loader-alt bx-spin'></i> Mengunggah ke Google Drive...`;
-                    src = await uploadFileToGAS(gasUrl, file);
+                    btnSubmit.innerHTML = `<i class='bx bx-loader-alt bx-spin'></i> Mengunggah ke Supabase...`;
+                    src = await uploadFileToSupabase(file, (pct) => {
+                        btnSubmit.innerHTML = `<i class='bx bx-loader-alt bx-spin'></i> Mengunggah... ${pct}%`;
+                    });
                 } catch (err) {
                     btnSubmit.innerHTML = originalText;
                     btnSubmit.style.opacity = '1';
                     btnSubmit.disabled = false;
-                    showCustomAlert("Gagal Mengunggah", `Gagal mengunggah berkas: <strong>${err.message}</strong>`, "error");
-                    return;
+
+                    // Deteksi jenis error dan beri panduan spesifik
+                    const msg = (err.message || '').toLowerCase();
+                    let helpText = '';
+                    if (msg.includes('bucket') && msg.includes('not found')) {
+                        helpText = `<br><br><strong>Solusi:</strong><br>
+                            1. Buka <em>Supabase Dashboard → Storage → New bucket</em><br>
+                            2. Nama bucket: <code>gallery</code> (huruf kecil, persis)<br>
+                            3. <strong>Centang "Public bucket"</strong><br>
+                            4. Jalankan SQL Policy untuk izinkan <code>anon</code> upload (lihat pesan bantuan di tab Galeri)`;
+                    } else if (msg.includes('row-level security') || msg.includes('policy') || msg.includes('permission') || msg.includes('403') || msg.includes('401')) {
+                        helpText = `<br><br><strong>Solusi:</strong><br>
+                            Jalankan SQL ini di <em>Supabase SQL Editor</em>:<br>
+                            <code style="display:block; background:#f1f5f9; padding:8px; margin-top:6px; border-radius:6px; font-size:11px;">
+                            create policy "anon upload gallery" on storage.objects for insert to anon with check (bucket_id = 'gallery');<br>
+                            create policy "anon read gallery" on storage.objects for select to anon using (bucket_id = 'gallery');
+                            </code>`;
+                    } else {
+                        helpText = `<br><br>Pastikan Supabase sudah dikonfigurasi dengan benar di tab <em>Statistik &amp; Info Sekolah</em>.`;
+                    }
+
+                    // Tanya user: mau coba lagi atau pakai path lokal saja?
+                    const wantFallback = await showGaleriFallbackPrompt(err.message + helpText);
+                    if (wantFallback) {
+                        // Simpan dengan filename sebagai path lokal (file harus sudah ada di asset/)
+                        src = `asset/${file.name}`;
+                    } else {
+                        return;
+                    }
                 }
             } else {
-                // Tanpa GAS, simpan nama file sebagai identifier (mode offline)
-                src = file.name;
+                const gasUrl = localStorage.getItem(L_KEY_GAS_URL) || '';
+                if (gasUrl) {
+                    try {
+                        btnSubmit.innerHTML = `<i class='bx bx-loader-alt bx-spin'></i> Mengunggah ke Google Drive...`;
+                        src = await uploadFileToGAS(gasUrl, file);
+                    } catch (err) {
+                        btnSubmit.innerHTML = originalText;
+                        btnSubmit.style.opacity = '1';
+                        btnSubmit.disabled = false;
+                        showCustomAlert("Gagal Mengunggah", `Gagal mengunggah berkas: <strong>${err.message}</strong>`, "error");
+                        return;
+                    }
+                } else {
+                    // Tanpa Supabase & GAS: tampilkan peringatan & sarankan path manual
+                    btnSubmit.innerHTML = originalText;
+                    btnSubmit.style.opacity = '1';
+                    btnSubmit.disabled = false;
+                    showCustomAlert(
+                        "Upload Tidak Tersedia",
+                        `Anda belum mengonfigurasi <strong>Supabase Storage</strong> di tab <em>Statistik &amp; Info Sekolah</em>.<br><br>
+                        Opsi yang tersedia:<br>
+                        1. <strong>Konfigurasi Supabase</strong> (disarankan) — lalu upload file ini<br>
+                        2. <strong>Tempel URL/path</strong> di kolom "Atau Tempelkan URL / Path Lokal" (mis. <code>asset/Foto.jpg</code>)`,
+                        "warning"
+                    );
+                    return;
+                }
             }
         }
 
