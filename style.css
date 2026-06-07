@@ -2497,6 +2497,67 @@ select.form-input {
     text-decoration: none;
 }
 
+/* Galeri Admin: Thumbnail preview & type badge */
+.admin-gal-thumb {
+    width: 60px;
+    height: 60px;
+    border-radius: 8px;
+    overflow: hidden;
+    background-color: #f1f5f9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border-color);
+}
+
+.admin-gal-thumb img,
+.admin-gal-thumb video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.admin-gal-thumb .admin-gal-icon {
+    font-size: 28px;
+    color: #94a3b8;
+}
+
+.gal-type-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 50px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.gal-type-photo {
+    background-color: rgba(59, 130, 246, 0.1);
+    color: #2563eb;
+    border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.gal-type-video {
+    background-color: rgba(168, 85, 247, 0.1);
+    color: #9333ea;
+    border: 1px solid rgba(168, 85, 247, 0.2);
+}
+
+.gal-source-text {
+    font-family: monospace;
+    font-size: 11px;
+    color: #475569;
+    background-color: #f1f5f9;
+    padding: 4px 8px;
+    border-radius: 6px;
+    word-break: break-all;
+    display: inline-block;
+    max-width: 280px;
+}
+
 /* Form Styling in Admin */
 .admin-form-box {
     background: #f8fafc;

@@ -821,6 +821,7 @@
                 <button class="admin-tab-btn active" onclick="switchAdminTab('tab-aspirasi')"><i class='bx bx-chat'></i> Kelola Aspirasi</button>
                 <button class="admin-tab-btn" onclick="switchAdminTab('tab-berita')"><i class='bx bx-news'></i> Kelola Berita</button>
                 <button class="admin-tab-btn" onclick="switchAdminTab('tab-ppdb')"><i class='bx bxs-group'></i> Pendaftar PPDB</button>
+                <button class="admin-tab-btn" onclick="switchAdminTab('tab-galeri')"><i class='bx bx-images'></i> Kelola Galeri</button>
                 <button class="admin-tab-btn" onclick="switchAdminTab('tab-info')"><i class='bx bx-cog'></i> Statistik & Info Sekolah</button>
             </div>
             
@@ -930,7 +931,78 @@
                     </div>
                 </div>
                 
-                <!-- Panel 4: Statistik & Info -->
+                <!-- Panel 4: Galeri -->
+                <div class="admin-panel-content" id="tab-galeri">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+                        <h4 style="font-size: 15px; color: var(--title-color); font-weight: 600;">Manajemen Item Galeri (Foto & Video)</h4>
+                        <div style="display: flex; gap: 10px;">
+                            <button class="admin-btn admin-btn-secondary" onclick="resetGaleriDemo()"><i class='bx bx-refresh'></i> Pulihkan Galeri Demo</button>
+                        </div>
+                    </div>
+                    <!-- Form Tambah Item Galeri -->
+                    <div class="admin-form-box">
+                        <h4 class="admin-form-title"><i class='bx bx-plus-circle'></i> Tambah Item Galeri Baru</h4>
+                        <form id="adminGaleriForm" class="admin-form">
+                            <div class="admin-form-row-2">
+                                <div class="admin-form-group">
+                                    <label for="galType">Jenis Item</label>
+                                    <select id="galType" class="admin-input-txt" required>
+                                        <option value="photo">Foto (Gambar)</option>
+                                        <option value="video">Video (MP4)</option>
+                                    </select>
+                                </div>
+                                <div class="admin-form-group">
+                                    <label for="galTitle">Judul / Deskripsi Item</label>
+                                    <input type="text" id="galTitle" class="admin-input-txt" required placeholder="Contoh: Upacara Bendera Hari Senin">
+                                </div>
+                            </div>
+                            <div class="admin-form-group">
+                                <label>Unggah Berkas (Otomatis ke Google Drive jika URL GAS dikonfigurasi)</label>
+                                <div class="file-upload-zone" id="zoneFileGaleri">
+                                    <i class='bx bx-cloud-upload upload-icon'></i>
+                                    <span class="upload-title">Klik / seret file ke sini</span>
+                                    <span class="upload-subtitle">Mendukung JPG, PNG, MP4, WebM (maks. 10MB)</span>
+                                    <input type="file" id="galFile" accept="image/*,video/mp4,video/webm" style="display: none;">
+                                    <div class="file-preview-card" id="previewFileGaleri" style="display: none;">
+                                        <i class='bx bxs-file-image file-icon' id="galFileIcon" style="color:#ef4444;"></i>
+                                        <div class="file-info">
+                                            <span class="file-name" id="galFileName">file.jpg</span>
+                                            <span class="file-size" id="galFileSize">0 KB</span>
+                                        </div>
+                                        <button type="button" class="btn-remove-file" id="removeFileGaleri"><i class='bx bx-x'></i></button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="admin-form-group">
+                                <label for="galUrl">Atau Tempelkan URL / Path Lokal (jika tidak unggah file)</label>
+                                <input type="text" id="galUrl" class="admin-input-txt" placeholder="Contoh: asset/Foto_Baru.jpg atau https://drive.google.com/...">
+                            </div>
+                            <div>
+                                <button type="submit" class="admin-btn admin-btn-primary"><i class='bx bx-paper-plane'></i> Publikasikan ke Galeri</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <h4 style="font-size: 15px; color: var(--title-color); font-weight: 600; margin-bottom: 15px;">Daftar Item Galeri Aktif</h4>
+                    <div class="admin-table-wrapper">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 8%;">Pratinjau</th>
+                                    <th style="width: 10%;">Jenis</th>
+                                    <th>Judul Item</th>
+                                    <th>Sumber File</th>
+                                    <th style="width: 12%;">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="adminGaleriTableBody">
+                                <!-- Data diisi via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Panel 5: Statistik & Info -->
                 <div class="admin-panel-content" id="tab-info">
                     <form id="adminProfileForm" class="admin-form">
                         <!-- Box Statistik -->
@@ -1024,6 +1096,6 @@
     </a>
 
     <!-- JavaScript -->
-    <script src="script.js?v=3"></script>
+    <script src="script.js?v=5"></script>
 </body>
 </html>

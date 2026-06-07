@@ -94,19 +94,3 @@ Konsep desain merujuk pada standar website premium dengan variabel warna yang te
 | **Hitam Soft** | `#222222` | Judul Section, Logo & Teks Gelap (*Title Color*) |
 
 ---
-
-## 💻 Cara Menjalankan Proyek
-
-Karena website ini dibuat menggunakan **Vanilla JS/CSS/HTML**, Anda tidak memerlukan langkah kompilasi atau instalasi server yang rumit:
-
-### Metode 1: Buka Langsung (Lokal)
-1. Unduh atau klon repositori ini ke komputer Anda.
-2. Navigasikan ke dalam folder proyek.
-3. Klik ganda (double-click) pada berkas `index.html` untuk membukanya secara instan di peramban (browser) favorit Anda (Chrome, Edge, Safari, Firefox).
-
-### Metode 2: Menggunakan Live Server (Direkomendasikan untuk Pengembangan)
-Jika Anda menggunakan editor kode seperti **Visual Studio Code**:
-1. Instal ekstensi **Live Server** oleh Ritwick Dey.
-2. Buka folder proyek ini di VS Code.
-3. Klik tombol **"Go Live"** di bilah status kanan bawah VS Code.
-4. Aplikasi akan berjalan pada alamat lokal `http://127.0.0.1:5500/index.html` lengkap dengan fitur *hot-reload* otomatis setiap kali Anda melakukan perubahan kode.

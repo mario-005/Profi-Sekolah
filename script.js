@@ -130,13 +130,12 @@ counters.forEach(counter => {
 /* =========================================
    6. SCROLL REVEAL ANIMATION
    ========================================= */
-const revealElements = document.querySelectorAll('.reveal-left, .reveal-right, .reveal-bottom');
-
 const scrollReveal = () => {
     const windowHeight = window.innerHeight;
     const elementVisible = 100; // Offset before reveal
 
-    revealElements.forEach((el) => {
+    // Re-query DOM setiap kali agar item yang di-render dinamis (mis. galeri dari localStorage) ikut ter-reveal
+    document.querySelectorAll('.reveal-left:not(.active), .reveal-right:not(.active), .reveal-bottom:not(.active)').forEach((el) => {
         const elementTop = el.getBoundingClientRect().top;
         if (elementTop < windowHeight - elementVisible) {
             el.classList.add('active');
@@ -482,7 +481,7 @@ document.addEventListener('keydown', (e) => {
 // =========================================
 // HELPERS: FileUpload Zone Interaction
 // =========================================
-function setupFileUploadZone(zoneId, inputId, previewId, nameId, sizeId, removeId, fileKey) {
+function setupFileUploadZone(zoneId, inputId, previewId, nameId, sizeId, removeId, fileKey, maxSizeMB = 2) {
     const zone    = document.getElementById(zoneId);
     const input   = document.getElementById(inputId);
     const preview = document.getElementById(previewId);
@@ -499,8 +498,8 @@ function setupFileUploadZone(zoneId, inputId, previewId, nameId, sizeId, removeI
 
     function attachFile(file) {
         if (!file) return;
-        if (file.size > 2 * 1024 * 1024) {
-            showCustomAlert("Berkas Terlalu Besar", `Berkas <strong>${file.name}</strong> melebihi batas maksimum 2MB. Harap kompres berkas terlebih dahulu.`, "warning");
+        if (file.size > maxSizeMB * 1024 * 1024) {
+            showCustomAlert("Berkas Terlalu Besar", `Berkas <strong>${file.name}</strong> melebihi batas maksimum ${maxSizeMB}MB. Harap kompres berkas terlebih dahulu.`, "warning");
             input.value = '';
             return;
         }
@@ -949,12 +948,14 @@ const L_KEY_ASPIRASI = 'sdn_tunas_aspirasi';
 const L_KEY_PPDB = 'sdn_tunas_ppdb';
 const L_KEY_KALDIK_URL = 'sdn_tunas_kaldik_url';
 const L_KEY_GAS_URL = 'sdn_tunas_gas_url';
+const L_KEY_GALERI = 'sdn_tunas_galeri';
 
 let selectedFiles = {
     FileFoto: null,
     FileKK: null,
     FileAkta: null,
-    FileKIA: null
+    FileKIA: null,
+    FileGaleri: null
 };
 
 // Data Default Bawaan (Hasil Survei Riil)
@@ -1021,6 +1022,19 @@ const defaultNews = [
         title: "Program \"Jumat Rohani\" Membentuk Karakter Islami yang Tangguh",
         excerpt: "Membiasakan shalat berjamaah, pembacaan tadarus surah pendek, serta kajian akhlak kesiswaan. Program Jumat Rohani terbukti membangun motivasi spiritual bagi seluruh siswa..."
     }
+];
+const defaultGaleri = [
+    { id: 'GAL-1001', type: 'photo', title: 'Suasana Upacara Bendera',          src: 'asset/Upacara.jpg' },
+    { id: 'GAL-1002', type: 'photo', title: 'Suasana Belajar Kelas 1',          src: 'asset/Kelas 1.jpg' },
+    { id: 'GAL-1003', type: 'photo', title: 'Lorong Sekolah',                   src: 'asset/Lorong.jpg' },
+    { id: 'GAL-1004', type: 'photo', title: 'Piala Prestasi Siswa',             src: 'asset/Piala.jpg' },
+    { id: 'GAL-1005', type: 'photo', title: 'Seragam Pramuka',                  src: 'asset/Baju_pramuka.jpg' },
+    { id: 'GAL-1006', type: 'video', title: 'Video Pembelajaran Kelas 1',       src: 'asset/Kelas 1.mp4' },
+    { id: 'GAL-1007', type: 'video', title: 'Video Pembelajaran Kelas 2',       src: 'asset/Kelas 2.mp4' },
+    { id: 'GAL-1008', type: 'video', title: 'Suasana Perpustakaan',             src: 'asset/Perpustakaan.mp4' },
+    { id: 'GAL-1009', type: 'video', title: 'Suasana Sekolah 1',                src: 'asset/Suasana 1.mp4' },
+    { id: 'GAL-1010', type: 'video', title: 'Suasana Sekolah 2',                src: 'asset/Suasana 2.mp4' },
+    { id: 'GAL-1011', type: 'video', title: 'Suasana Sekolah 3',                src: 'asset/Suasana 3.mp4' }
 ];
 
 // 1. FUNGSI TOAST NOTIFICATION
@@ -1156,6 +1170,7 @@ if (closeDashboardModal) {
 document.addEventListener('DOMContentLoaded', () => {
     initLocalState();
     renderPublicUI();
+    if (typeof renderPublicGaleri === 'function') renderPublicGaleri();
 });
 
 function initLocalState() {
@@ -1199,6 +1214,11 @@ function initLocalState() {
     // 7. Inisialisasi Google Apps Script URL
     if (!localStorage.getItem(L_KEY_GAS_URL)) {
         localStorage.setItem(L_KEY_GAS_URL, '');
+    }
+
+    // 8. Inisialisasi Galeri
+    if (!localStorage.getItem(L_KEY_GALERI)) {
+        localStorage.setItem(L_KEY_GALERI, JSON.stringify(defaultGaleri));
     }
 }
 
@@ -1313,6 +1333,9 @@ function loadAdminDashboardData() {
     renderAdminAspirations();
     renderAdminNews();
     renderAdminPPDB();
+    renderAdminGaleri();
+    setupGaleriUploadZone();
+    bindAdminGaleriForm();
 }
 
 // 7. PANEL KELOLA ASPIRASI
@@ -1790,6 +1813,216 @@ function exportPPDBData() {
     });
 }
 
+// ============================================================
+// 8. PANEL KELOLA GALERI (ADMIN)
+// ============================================================
+
+// Render tabel galeri di dashboard admin
+function renderAdminGaleri() {
+    const tblBody = document.getElementById('adminGaleriTableBody');
+    if (!tblBody) return;
+
+    tblBody.innerHTML = '';
+    const items = JSON.parse(localStorage.getItem(L_KEY_GALERI)) || [];
+
+    if (items.length === 0) {
+        tblBody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #999;">Belum ada item galeri. Silakan tambahkan item baru.</td></tr>`;
+        return;
+    }
+
+    items.forEach((item) => {
+        const isPhoto = item.type === 'photo';
+        const typeLabel = isPhoto ? 'Foto' : 'Video';
+        const typeIcon  = isPhoto ? 'bx-image' : 'bx-video';
+        const typeClass = isPhoto ? 'gal-type-photo' : 'gal-type-video';
+
+        let thumbHTML;
+        if (isPhoto) {
+            thumbHTML = `<img src="${item.src}" alt="${item.title}" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                         <i class='bx bx-image admin-gal-icon' style="display:none;"></i>`;
+        } else {
+            thumbHTML = `<video src="${item.src}" muted preload="metadata" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"></video>
+                         <i class='bx bx-video admin-gal-icon' style="display:none;"></i>`;
+        }
+
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td><div class="admin-gal-thumb">${thumbHTML}</div></td>
+            <td><span class="gal-type-badge ${typeClass}"><i class='bx ${typeIcon}'></i> ${typeLabel}</span></td>
+            <td><strong>${item.title}</strong><br><span style="font-size: 11px; color: #999;">ID: ${item.id}</span></td>
+            <td><span class="gal-source-text">${item.src}</span></td>
+            <td>
+                <button class="admin-btn admin-btn-del" onclick="deleteGaleri('${item.id}')"><i class='bx bx-trash'></i> Hapus</button>
+            </td>
+        `;
+        tblBody.appendChild(row);
+    });
+}
+
+// Hapus item galeri
+function deleteGaleri(id) {
+    if (!confirm(`Apakah Anda yakin ingin menghapus item galeri ${id}?`)) return;
+
+    let items = JSON.parse(localStorage.getItem(L_KEY_GALERI)) || [];
+    items = items.filter(i => i.id !== id);
+
+    localStorage.setItem(L_KEY_GALERI, JSON.stringify(items));
+    renderAdminGaleri();
+    renderPublicGaleri();
+    showAdminToast(`Item galeri ${id} berhasil dihapus!`, 'success');
+}
+
+// Pulihkan galeri demo
+function resetGaleriDemo() {
+    if (!confirm('Pulihkan galeri ke setelan awal (11 item bawaan)? Item yang Anda tambahkan akan hilang.')) return;
+    localStorage.setItem(L_KEY_GALERI, JSON.stringify(defaultGaleri));
+    renderAdminGaleri();
+    renderPublicGaleri();
+    showAdminToast('Galeri demo berhasil dipulihkan!', 'success');
+}
+
+// Setup zone upload untuk form galeri (dipanggil sekali)
+function setupGaleriUploadZone() {
+    if (typeof setupFileUploadZone !== 'function') return;
+    setupFileUploadZone(
+        'zoneFileGaleri', 'galFile',
+        'previewFileGaleri', 'galFileName', 'galFileSize',
+        'removeFileGaleri', 'FileGaleri', 10
+    );
+}
+
+// Handler submit form tambah galeri
+function bindAdminGaleriForm() {
+    const form = document.getElementById('adminGaleriForm');
+    if (!form) return;
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const btnSubmit = form.querySelector('.btn-submit');
+        const originalText = btnSubmit.innerHTML;
+
+        const type   = document.getElementById('galType').value;
+        const title  = document.getElementById('galTitle').value.trim();
+        const urlInp = document.getElementById('galUrl').value.trim();
+        const file   = selectedFiles.FileGaleri;
+
+        if (!title) {
+            showCustomAlert("Judul Kosong", "Mohon isi judul/deskripsi item galeri terlebih dahulu.", "warning");
+            return;
+        }
+
+        if (!file && !urlInp) {
+            showCustomAlert("Sumber Berkas Kosong", "Silakan unggah file ATAU tempelkan URL/path lokal item galeri.", "warning");
+            return;
+        }
+
+        btnSubmit.innerHTML = `<i class='bx bx-loader-alt bx-spin'></i> Mengunggah...`;
+        btnSubmit.style.opacity = '0.8';
+        btnSubmit.disabled = true;
+
+        let src = urlInp;
+
+        // Jika user mengunggah file & GAS URL tersedia, upload ke Google Drive
+        if (file) {
+            const gasUrl = localStorage.getItem(L_KEY_GAS_URL) || '';
+            if (gasUrl) {
+                try {
+                    btnSubmit.innerHTML = `<i class='bx bx-loader-alt bx-spin'></i> Mengunggah ke Google Drive...`;
+                    src = await uploadFileToGAS(gasUrl, file);
+                } catch (err) {
+                    btnSubmit.innerHTML = originalText;
+                    btnSubmit.style.opacity = '1';
+                    btnSubmit.disabled = false;
+                    showCustomAlert("Gagal Mengunggah", `Gagal mengunggah berkas: <strong>${err.message}</strong>`, "error");
+                    return;
+                }
+            } else {
+                // Tanpa GAS, simpan nama file sebagai identifier (mode offline)
+                src = file.name;
+            }
+        }
+
+        // Generate ID unik
+        const items = JSON.parse(localStorage.getItem(L_KEY_GALERI)) || [];
+        const newId = 'GAL-' + Math.floor(2000 + Math.random() * 8000);
+        const newItem = { id: newId, type, title, src };
+
+        items.push(newItem);
+        localStorage.setItem(L_KEY_GALERI, JSON.stringify(items));
+
+        // Reset form
+        form.reset();
+        selectedFiles.FileGaleri = null;
+        const preview = document.getElementById('previewFileGaleri');
+        if (preview) preview.style.display = 'none';
+
+        // Re-render tabel admin + galeri publik
+        renderAdminGaleri();
+        renderPublicGaleri();
+
+        btnSubmit.innerHTML = originalText;
+        btnSubmit.style.opacity = '1';
+        btnSubmit.disabled = false;
+        showAdminToast(`Item galeri "${title}" berhasil ditambahkan!`, 'success');
+    });
+}
+
+// Render galeri publik (halaman utama) dari localStorage
+function renderPublicGaleri() {
+    const grid = document.getElementById('galleryGrid');
+    if (!grid) return;
+    const items = JSON.parse(localStorage.getItem(L_KEY_GALERI)) || [];
+
+    grid.innerHTML = '';
+    if (items.length === 0) {
+        const empty = document.getElementById('galleryEmpty');
+        if (empty) empty.classList.remove('hidden');
+        return;
+    }
+
+    items.forEach((item, idx) => {
+        const isPhoto = item.type === 'photo';
+        const delay = 0.05 * ((idx % 11) + 1);
+        let contentHTML;
+        if (isPhoto) {
+            contentHTML = `
+                <img src="${item.src}" alt="${item.title}" loading="lazy">
+                <div class="gallery-overlay">
+                    <span class="gallery-tag"><i class='bx bx-image'></i> Foto</span>
+                    <i class='bx bx-search-alt-2'></i>
+                </div>`;
+        } else {
+            contentHTML = `
+                <video muted preload="metadata" playsinline>
+                    <source src="${item.src}" type="video/mp4">
+                </video>
+                <div class="gallery-overlay">
+                    <span class="gallery-tag"><i class='bx bx-video'></i> Video</span>
+                    <i class='bx bx-play-circle'></i>
+                </div>`;
+        }
+        const div = document.createElement('div');
+        div.className = 'gallery-item reveal-bottom gallery-' + (isPhoto ? 'photo' : 'video');
+        div.setAttribute('data-type', item.type);
+        div.setAttribute('data-title', item.title);
+        if (!isPhoto) div.setAttribute('data-src', item.src);
+        div.style.transitionDelay = delay + 's';
+        div.innerHTML = contentHTML;
+        grid.appendChild(div);
+    });
+
+    // Re-init gallery interactivity (filter, lightbox, hover-play)
+    if (typeof initGalleryInteractions === 'function') {
+        initGalleryInteractions();
+    }
+    // Apply current filter (re-trigger active filter button)
+    const activeFilter = document.querySelector('.filter-btn.active');
+    if (activeFilter) activeFilter.click();
+
+    // Trigger scroll reveal agar item yang baru di-render langsung terlihat
+    if (typeof scrollReveal === 'function') scrollReveal();
+}
+
 // PREMIUM CUSTOM POPUP ALERT SYSTEM
 function showCustomAlert(title, message, type = 'error') {
     // Remove existing alert if any
@@ -1848,7 +2081,11 @@ function showCustomAlert(title, message, type = 'error') {
 /* =========================================
    14. GALLERY FILTER & LIGHTBOX
    ========================================= */
-(function initGallery() {
+window.galleryState = { currentItems: [], currentIndex: 0 };
+
+// Fungsi untuk mengikat ulang interaksi galeri (filter, lightbox, hover-play).
+// Dipanggil setiap kali grid galeri di-render ulang (mis. setelah admin tambah/hapus item).
+window.initGalleryInteractions = function() {
     const filterContainer = document.getElementById('galleryFilters');
     const galleryGrid     = document.getElementById('galleryGrid');
     const emptyState      = document.getElementById('galleryEmpty');
@@ -1857,9 +2094,6 @@ function showCustomAlert(title, message, type = 'error') {
     const lbVideo         = document.getElementById('lightboxVideo');
     const lbTitle         = document.getElementById('lightboxTitle');
     const lbCounter       = document.getElementById('lightboxCounter');
-    const lbClose         = document.getElementById('lightboxClose');
-    const lbPrev          = document.getElementById('lightboxPrev');
-    const lbNext          = document.getElementById('lightboxNext');
 
     if (!galleryGrid || !filterContainer) return;
 
@@ -1887,37 +2121,36 @@ function showCustomAlert(title, message, type = 'error') {
         }
     };
 
+    // Hindari double-binding: ganti node tombol dengan clone
     filterButtons.forEach(btn => {
-        btn.addEventListener('click', () => {
-            filterButtons.forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            applyFilter(btn.getAttribute('data-filter'));
+        const newBtn = btn.cloneNode(true);
+        btn.parentNode.replaceChild(newBtn, btn);
+        newBtn.addEventListener('click', () => {
+            filterContainer.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            newBtn.classList.add('active');
+            applyFilter(newBtn.getAttribute('data-filter'));
         });
     });
 
     // -------- Lightbox --------
-    let currentItems  = [];
-    let currentIndex  = 0;
-
     const collectVisibleItems = () => {
-        currentItems = Array.from(galleryGrid.querySelectorAll('.gallery-item:not(.is-hidden)'));
+        window.galleryState.currentItems = Array.from(galleryGrid.querySelectorAll('.gallery-item:not(.is-hidden)'));
     };
 
     const showLightbox = (index) => {
         if (!lightbox) return;
         collectVisibleItems();
+        const { currentItems } = window.galleryState;
         if (currentItems.length === 0) return;
 
-        // Wrap-around
         if (index < 0) index = currentItems.length - 1;
         if (index >= currentItems.length) index = 0;
-        currentIndex = index;
+        window.galleryState.currentIndex = index;
 
-        const item  = currentItems[currentIndex];
+        const item  = currentItems[index];
         const type  = item.getAttribute('data-type');
         const title = item.getAttribute('data-title') || '';
 
-        // Reset
         lbVideo.pause();
         lbVideo.removeAttribute('src');
         lbVideo.load();
@@ -1939,15 +2172,14 @@ function showCustomAlert(title, message, type = 'error') {
         }
 
         if (lbTitle)   lbTitle.textContent = title;
-        if (lbCounter) lbCounter.textContent = `${currentIndex + 1} / ${currentItems.length}`;
+        if (lbCounter) lbCounter.textContent = `${index + 1} / ${currentItems.length}`;
 
-        // Hide nav buttons if only 1 item
         if (currentItems.length <= 1) {
-            lbPrev?.classList.add('hidden');
-            lbNext?.classList.add('hidden');
+            document.getElementById('lightboxPrev')?.classList.add('hidden');
+            document.getElementById('lightboxNext')?.classList.add('hidden');
         } else {
-            lbPrev?.classList.remove('hidden');
-            lbNext?.classList.remove('hidden');
+            document.getElementById('lightboxPrev')?.classList.remove('hidden');
+            document.getElementById('lightboxNext')?.classList.remove('hidden');
         }
 
         lightbox.classList.add('show');
@@ -1962,34 +2194,16 @@ function showCustomAlert(title, message, type = 'error') {
     };
 
     const navigateLightbox = (direction) => {
-        showLightbox(currentIndex + direction);
+        showLightbox(window.galleryState.currentIndex + direction);
     };
 
     // Bind click on each gallery item
-    galleryGrid.querySelectorAll('.gallery-item').forEach((item, idx) => {
+    galleryGrid.querySelectorAll('.gallery-item').forEach((item) => {
         item.addEventListener('click', () => {
-            // Find index among visible items at click time
             collectVisibleItems();
-            const visibleIdx = currentItems.indexOf(item);
+            const visibleIdx = window.galleryState.currentItems.indexOf(item);
             if (visibleIdx >= 0) showLightbox(visibleIdx);
         });
-    });
-
-    if (lbClose) lbClose.addEventListener('click', closeLightbox);
-    if (lbPrev)  lbPrev.addEventListener('click', (e) => { e.stopPropagation(); navigateLightbox(-1); });
-    if (lbNext)  lbNext.addEventListener('click', (e) => { e.stopPropagation(); navigateLightbox(1); });
-
-    if (lightbox) {
-        lightbox.addEventListener('click', (e) => {
-            if (e.target === lightbox) closeLightbox();
-        });
-    }
-
-    document.addEventListener('keydown', (e) => {
-        if (!lightbox || !lightbox.classList.contains('show')) return;
-        if (e.key === 'Escape')      closeLightbox();
-        else if (e.key === 'ArrowLeft')  navigateLightbox(-1);
-        else if (e.key === 'ArrowRight') navigateLightbox(1);
     });
 
     // -------- Video preview autoplay-on-hover (muted) --------
@@ -2004,5 +2218,44 @@ function showCustomAlert(title, message, type = 'error') {
             vid.currentTime = 0;
         });
     });
+
+    // Stash functions for external control
+    window.galleryState.show    = showLightbox;
+    window.galleryState.close   = closeLightbox;
+    window.galleryState.next    = () => navigateLightbox(1);
+    window.galleryState.prev    = () => navigateLightbox(-1);
+    window.galleryState.applyFilter = applyFilter;
+};
+
+// Bind tombol lightbox (sekali saja)
+(function bindLightboxControls() {
+    const lbClose = document.getElementById('lightboxClose');
+    const lbPrev  = document.getElementById('lightboxPrev');
+    const lbNext  = document.getElementById('lightboxNext');
+    const lightbox = document.getElementById('lightbox');
+
+    if (lbClose) lbClose.addEventListener('click', () => window.galleryState.close && window.galleryState.close());
+    if (lbPrev)  lbPrev.addEventListener('click', (e) => { e.stopPropagation(); window.galleryState.prev && window.galleryState.prev(); });
+    if (lbNext)  lbNext.addEventListener('click', (e) => { e.stopPropagation(); window.galleryState.next && window.galleryState.next(); });
+
+    if (lightbox) {
+        lightbox.addEventListener('click', (e) => {
+            if (e.target === lightbox) window.galleryState.close && window.galleryState.close();
+        });
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if (!lightbox || !lightbox.classList.contains('show')) return;
+        if (e.key === 'Escape') window.galleryState.close && window.galleryState.close();
+        else if (e.key === 'ArrowLeft')  window.galleryState.prev && window.galleryState.prev();
+        else if (e.key === 'ArrowRight') window.galleryState.next && window.galleryState.next();
+    });
 })();
+
+// Render galeri publik dari localStorage saat halaman dimuat
+document.addEventListener('DOMContentLoaded', () => {
+    if (typeof renderPublicGaleri === 'function') {
+        renderPublicGaleri();
+    }
+});
 
