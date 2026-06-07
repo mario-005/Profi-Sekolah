@@ -591,6 +591,8 @@ function setupFileUploadZone(zoneId, inputId, previewId, nameId, sizeId, removeI
     const sizeEl  = document.getElementById(sizeId);
     const removeBtn = document.getElementById(removeId);
     if (!zone || !input) return;
+    if (zone.dataset.uploadBound === 'true') return;
+    zone.dataset.uploadBound = 'true';
 
     function formatBytes(bytes) {
         if (bytes < 1024) return bytes + ' B';
@@ -1269,6 +1271,9 @@ const L_KEY_NEWS = 'sdn_tunas_news';
 const L_KEY_ASPIRASI = 'sdn_tunas_aspirasi';
 const L_KEY_PPDB = 'sdn_tunas_ppdb';
 const L_KEY_KALDIK_URL = 'sdn_tunas_kaldik_url';
+const L_KEY_HERO_IMAGE = 'sdn_tunas_hero_image';
+const L_KEY_PROFILE_IMAGE = 'sdn_tunas_profile_image';
+const L_KEY_PROFILE_SUB_IMAGE = 'sdn_tunas_profile_sub_image';
 const L_KEY_GAS_URL = 'sdn_tunas_gas_url';
 const L_KEY_GALERI = 'sdn_tunas_galeri';
 const L_KEY_POSTERS = 'sdn_tunas_registration_posters';
@@ -1282,12 +1287,18 @@ let selectedFiles = {
     FileAkta: null,
     FileKIA: null,
     FileGaleri: null,
-    FilePoster: null
+    FilePoster: null,
+    FileHeroImage: null,
+    FileProfileImage: null,
+    FileProfileSubImage: null
 };
 
 // Data Default Bawaan (Hasil Survei Riil)
 const defaultStats = { siswa: 210, guru: 9, rombel: 7 };
 const defaultKaldikUrl = "asset/KALDIK 2025-2026 KOTA CIMAHI - Halel_22.pdf";
+const defaultHeroImage = "asset/Baju_pramuka.jpg";
+const defaultProfileImage = "asset/Upacara.jpg";
+const defaultProfileSubImage = "asset/Baju_pramuka.jpg";
 const defaultPPDB = [
     {
         id: 'PPDB-1042',
@@ -1544,6 +1555,17 @@ function initLocalState() {
     if (!localStorage.getItem(L_KEY_KALDIK_URL)) {
         localStorage.setItem(L_KEY_KALDIK_URL, defaultKaldikUrl);
     }
+
+    // 5.5. Inisialisasi Foto Hero & Profil
+    if (!localStorage.getItem(L_KEY_HERO_IMAGE)) {
+        localStorage.setItem(L_KEY_HERO_IMAGE, defaultHeroImage);
+    }
+    if (!localStorage.getItem(L_KEY_PROFILE_IMAGE)) {
+        localStorage.setItem(L_KEY_PROFILE_IMAGE, defaultProfileImage);
+    }
+    if (!localStorage.getItem(L_KEY_PROFILE_SUB_IMAGE)) {
+        localStorage.setItem(L_KEY_PROFILE_SUB_IMAGE, defaultProfileSubImage);
+    }
     
     // 6. Inisialisasi PPDB
     if (!localStorage.getItem(L_KEY_PPDB)) {
@@ -1589,6 +1611,18 @@ function renderPublicUI() {
         statRombel.setAttribute('data-target', stats.rombel);
         statRombel.textContent = stats.rombel;
     }
+
+    // Render Foto Hero & Profil Sekolah
+    const heroImg = document.querySelector('.hero-img');
+    const profileImg = document.querySelector('.tentang-images .img-main');
+    const profileSubImg = document.querySelector('.tentang-images .img-sub');
+    const heroImgUrl = localStorage.getItem(L_KEY_HERO_IMAGE) || defaultHeroImage;
+    const profileImgUrl = localStorage.getItem(L_KEY_PROFILE_IMAGE) || defaultProfileImage;
+    const profileSubImgUrl = localStorage.getItem(L_KEY_PROFILE_SUB_IMAGE) || defaultProfileSubImage;
+
+    if (heroImg) heroImg.src = heroImgUrl;
+    if (profileImg) profileImg.src = profileImgUrl;
+    if (profileSubImg) profileSubImg.src = profileSubImgUrl;
     
     // Render statistik di list Tentang Kami
     const guruLi = document.querySelector('.tentang-list li:nth-child(3)');
@@ -1666,6 +1700,19 @@ function loadAdminDashboardData() {
     if (dbInfoKaldikUrl) {
         dbInfoKaldikUrl.value = localStorage.getItem(L_KEY_KALDIK_URL) || defaultKaldikUrl;
     }
+
+    const dbHeroImageUrl = document.getElementById('dbHeroImageUrl');
+    const dbProfileImageUrl = document.getElementById('dbProfileImageUrl');
+    const dbProfileSubImageUrl = document.getElementById('dbProfileSubImageUrl');
+    const savedHeroImage = localStorage.getItem(L_KEY_HERO_IMAGE) || defaultHeroImage;
+    const savedProfileImage = localStorage.getItem(L_KEY_PROFILE_IMAGE) || defaultProfileImage;
+    const savedProfileSubImage = localStorage.getItem(L_KEY_PROFILE_SUB_IMAGE) || defaultProfileSubImage;
+    addImageOptionIfMissing(dbHeroImageUrl, savedHeroImage, 'Gambar Hero Tersimpan');
+    addImageOptionIfMissing(dbProfileImageUrl, savedProfileImage, 'Gambar Profil Tersimpan');
+    addImageOptionIfMissing(dbProfileSubImageUrl, savedProfileSubImage, 'Gambar Pendamping Tersimpan');
+    if (dbHeroImageUrl) dbHeroImageUrl.value = savedHeroImage;
+    if (dbProfileImageUrl) dbProfileImageUrl.value = savedProfileImage;
+    if (dbProfileSubImageUrl) dbProfileSubImageUrl.value = savedProfileSubImage;
     
     // Pre-fill Form GAS Upload URL
     const dbInfoGasUrl = document.getElementById('dbInfoGasUrl');
@@ -1687,6 +1734,7 @@ function loadAdminDashboardData() {
     renderAdminPPDB();
     renderAdminPosters();
     renderAdminGaleri();
+    setupProfileImageUploadZones();
     setupPosterUploadZone();
     setupGaleriUploadZone();
     bindAdminPosterForm();
@@ -1999,10 +2047,65 @@ function deleteNews(index) {
     showAdminToast('Berita berhasil dihapus!', 'success');
 }
 
+function addImageOptionIfMissing(selectEl, value, label) {
+    if (!selectEl || !value) return;
+    const exists = Array.from(selectEl.options).some(option => option.value === value);
+    if (!exists) {
+        const option = document.createElement('option');
+        option.value = value;
+        option.textContent = label;
+        selectEl.appendChild(option);
+    }
+}
+
+function setupProfileImageUploadZones() {
+    if (typeof setupFileUploadZone !== 'function') return;
+
+    setupFileUploadZone(
+        'zoneFileHeroImage', 'fileHeroImage',
+        'previewFileHeroImage', 'nameFileHeroImage', 'sizeFileHeroImage',
+        'removeFileHeroImage', 'FileHeroImage', 5
+    );
+    setupFileUploadZone(
+        'zoneFileProfileImage', 'fileProfileImage',
+        'previewFileProfileImage', 'nameFileProfileImage', 'sizeFileProfileImage',
+        'removeFileProfileImage', 'FileProfileImage', 5
+    );
+    setupFileUploadZone(
+        'zoneFileProfileSubImage', 'fileProfileSubImage',
+        'previewFileProfileSubImage', 'nameFileProfileSubImage', 'sizeFileProfileSubImage',
+        'removeFileProfileSubImage', 'FileProfileSubImage', 5
+    );
+}
+
+async function uploadProfileImageToSupabase(fileKey, currentValue, label) {
+    const file = selectedFiles[fileKey];
+    if (!file) return currentValue;
+
+    if (!isSupabaseConfigured()) {
+        throw new Error(`Supabase belum dikonfigurasi. Isi Supabase URL, Anon Key, dan Bucket terlebih dahulu sebelum mengunggah ${label}.`);
+    }
+
+    return uploadFileToSupabase(file);
+}
+
+function clearProfileImageUploadPreviews() {
+    ['HeroImage', 'ProfileImage', 'ProfileSubImage'].forEach((suffix) => {
+        const preview = document.getElementById(`previewFile${suffix}`);
+        const input = document.getElementById(`file${suffix}`);
+        if (preview) preview.style.display = 'none';
+        if (input) input.value = '';
+    });
+
+    selectedFiles.FileHeroImage = null;
+    selectedFiles.FileProfileImage = null;
+    selectedFiles.FileProfileSubImage = null;
+}
+
 // 9. PANEL UPDATE STATISTIK & INFO KONTAK
 const adminProfileForm = document.getElementById('adminProfileForm');
 if (adminProfileForm) {
-    adminProfileForm.addEventListener('submit', (e) => {
+    adminProfileForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         
         // 1. Ambil Nilai Form Statistik
@@ -2029,7 +2132,7 @@ if (adminProfileForm) {
         if (newKaldikUrl) {
             localStorage.setItem(L_KEY_KALDIK_URL, newKaldikUrl);
         }
-        
+
         // 4.6. Simpan Google Apps Script URL
         const dbInfoGasUrl = document.getElementById('dbInfoGasUrl');
         if (dbInfoGasUrl) {
@@ -2043,6 +2146,29 @@ if (adminProfileForm) {
         if (dbSupabaseUrl)    localStorage.setItem(L_KEY_SUPABASE_URL, dbSupabaseUrl.value.trim());
         if (dbSupabaseKey)    localStorage.setItem(L_KEY_SUPABASE_KEY, dbSupabaseKey.value.trim());
         if (dbSupabaseBucket) localStorage.setItem(L_KEY_SUPABASE_BUCKET, (dbSupabaseBucket.value.trim() || 'gallery'));
+
+        // 4.8. Simpan Foto Hero & Profil (dropdown atau upload Supabase)
+        let heroImageUrl = document.getElementById('dbHeroImageUrl')?.value.trim() || defaultHeroImage;
+        let profileImageUrl = document.getElementById('dbProfileImageUrl')?.value.trim() || defaultProfileImage;
+        let profileSubImageUrl = document.getElementById('dbProfileSubImageUrl')?.value.trim() || defaultProfileSubImage;
+
+        try {
+            heroImageUrl = await uploadProfileImageToSupabase('FileHeroImage', heroImageUrl, 'foto hero');
+            profileImageUrl = await uploadProfileImageToSupabase('FileProfileImage', profileImageUrl, 'foto profil utama');
+            profileSubImageUrl = await uploadProfileImageToSupabase('FileProfileSubImage', profileSubImageUrl, 'foto profil pendamping');
+        } catch (err) {
+            showCustomAlert("Upload Foto Gagal", err.message, "error");
+            return;
+        }
+
+        localStorage.setItem(L_KEY_HERO_IMAGE, heroImageUrl);
+        localStorage.setItem(L_KEY_PROFILE_IMAGE, profileImageUrl);
+        localStorage.setItem(L_KEY_PROFILE_SUB_IMAGE, profileSubImageUrl);
+
+        addImageOptionIfMissing(document.getElementById('dbHeroImageUrl'), heroImageUrl, 'Upload Hero Supabase');
+        addImageOptionIfMissing(document.getElementById('dbProfileImageUrl'), profileImageUrl, 'Upload Profil Supabase');
+        addImageOptionIfMissing(document.getElementById('dbProfileSubImageUrl'), profileSubImageUrl, 'Upload Pendamping Supabase');
+        clearProfileImageUploadPreviews();
 
         // 5. Render Perubahan ke Publik UI secara instan!
         renderPublicUI();
@@ -2066,6 +2192,9 @@ function resetFactorySettings() {
     localStorage.removeItem(L_KEY_ASPIRASI);
     localStorage.removeItem(L_KEY_PPDB);
     localStorage.removeItem(L_KEY_KALDIK_URL);
+    localStorage.removeItem(L_KEY_HERO_IMAGE);
+    localStorage.removeItem(L_KEY_PROFILE_IMAGE);
+    localStorage.removeItem(L_KEY_PROFILE_SUB_IMAGE);
     localStorage.removeItem(L_KEY_POSTERS);
     
     // Tutup Modal
@@ -2462,6 +2591,7 @@ function renderAdminGaleri() {
             <td><strong>${item.title}</strong><br><span style="font-size: 11px; color: #999;">ID: ${item.id}</span></td>
             <td><span class="gal-source-text">${item.src}</span></td>
             <td>
+                <button class="admin-btn admin-btn-secondary" onclick="editGaleri('${item.id}')"><i class='bx bx-edit'></i> Edit</button>
                 <button class="admin-btn admin-btn-del" onclick="deleteGaleri('${item.id}')"><i class='bx bx-trash'></i> Hapus</button>
             </td>
         `;
@@ -2479,6 +2609,7 @@ function deleteGaleri(id) {
     localStorage.setItem(L_KEY_GALERI, JSON.stringify(items));
     renderAdminGaleri();
     renderPublicGaleri();
+    resetGaleriForm();
     showAdminToast(`Item galeri ${id} berhasil dihapus!`, 'success');
 }
 
@@ -2488,6 +2619,7 @@ function resetGaleriDemo() {
     localStorage.setItem(L_KEY_GALERI, JSON.stringify(defaultGaleri));
     renderAdminGaleri();
     renderPublicGaleri();
+    resetGaleriForm();
     showAdminToast('Galeri demo berhasil dipulihkan!', 'success');
 }
 
@@ -2499,6 +2631,21 @@ function setupGaleriUploadZone() {
         'previewFileGaleri', 'galFileName', 'galFileSize',
         'removeFileGaleri', 'FileGaleri', 10
     );
+}
+
+function resetGaleriForm() {
+    const form = document.getElementById('adminGaleriForm');
+    const editId = document.getElementById('galEditId');
+    const submitBtn = document.getElementById('galSubmitBtn');
+    const cancelBtn = document.getElementById('galCancelEditBtn');
+    const preview = document.getElementById('previewFileGaleri');
+
+    if (form) form.reset();
+    if (editId) editId.value = '';
+    if (submitBtn) submitBtn.innerHTML = `<i class='bx bx-paper-plane'></i> Publikasikan ke Galeri`;
+    if (cancelBtn) cancelBtn.style.display = 'none';
+    if (preview) preview.style.display = 'none';
+    selectedFiles.FileGaleri = null;
 }
 
 // Handler submit form tambah galeri
@@ -2519,6 +2666,7 @@ function bindAdminGaleriForm() {
         const title  = document.getElementById('galTitle').value.trim();
         const urlInp = document.getElementById('galUrl').value.trim();
         const file   = selectedFiles.FileGaleri;
+        const editId = document.getElementById('galEditId')?.value || '';
 
         if (!title) {
             showCustomAlert("Judul Kosong", "Mohon isi judul/deskripsi item galeri terlebih dahulu.", "warning");
@@ -2611,17 +2759,22 @@ function bindAdminGaleriForm() {
 
         // Generate ID unik
         const items = JSON.parse(localStorage.getItem(L_KEY_GALERI)) || [];
-        const newId = 'GAL-' + Math.floor(2000 + Math.random() * 8000);
-        const newItem = { id: newId, type, title, src };
-
-        items.push(newItem);
+        if (editId) {
+            const found = items.find(item => item.id === editId);
+            if (found) {
+                found.type = type;
+                found.title = title;
+                found.src = src;
+            }
+        } else {
+            const newId = 'GAL-' + Math.floor(2000 + Math.random() * 8000);
+            const newItem = { id: newId, type, title, src };
+            items.push(newItem);
+        }
         localStorage.setItem(L_KEY_GALERI, JSON.stringify(items));
 
         // Reset form
-        form.reset();
-        selectedFiles.FileGaleri = null;
-        const preview = document.getElementById('previewFileGaleri');
-        if (preview) preview.style.display = 'none';
+        resetGaleriForm();
 
         // Re-render tabel admin + galeri publik
         renderAdminGaleri();
@@ -2630,8 +2783,37 @@ function bindAdminGaleriForm() {
         btnSubmit.innerHTML = originalText;
         btnSubmit.style.opacity = '1';
         btnSubmit.disabled = false;
-        showAdminToast(`Item galeri "${title}" berhasil ditambahkan!`, 'success');
+        showAdminToast(editId ? `Item galeri "${title}" berhasil diperbarui!` : `Item galeri "${title}" berhasil ditambahkan!`, 'success');
     });
+}
+
+function editGaleri(id) {
+    const items = JSON.parse(localStorage.getItem(L_KEY_GALERI)) || [];
+    const found = items.find(item => item.id === id);
+    if (!found) return;
+
+    const editId = document.getElementById('galEditId');
+    const type = document.getElementById('galType');
+    const title = document.getElementById('galTitle');
+    const url = document.getElementById('galUrl');
+    const submitBtn = document.getElementById('galSubmitBtn');
+    const cancelBtn = document.getElementById('galCancelEditBtn');
+    const preview = document.getElementById('previewFileGaleri');
+
+    if (editId) editId.value = found.id;
+    if (type) type.value = found.type;
+    if (title) title.value = found.title;
+    if (url) url.value = found.src;
+    if (submitBtn) submitBtn.innerHTML = `<i class='bx bx-save'></i> Simpan Perubahan`;
+    if (cancelBtn) cancelBtn.style.display = 'inline-flex';
+    if (preview) preview.style.display = 'none';
+    selectedFiles.FileGaleri = null;
+
+    document.getElementById('adminGaleriForm')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function cancelGaleriEdit() {
+    resetGaleriForm();
 }
 
 // Render galeri publik (halaman utama) dari localStorage

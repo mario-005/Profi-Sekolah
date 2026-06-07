@@ -975,6 +975,7 @@
                     <div class="admin-form-box">
                         <h4 class="admin-form-title"><i class='bx bx-plus-circle'></i> Tambah Item Galeri Baru</h4>
                         <form id="adminGaleriForm" class="admin-form">
+                            <input type="hidden" id="galEditId">
                             <div class="admin-form-row-2">
                                 <div class="admin-form-group">
                                     <label for="galType">Jenis Item</label>
@@ -1009,8 +1010,9 @@
                                 <label for="galUrl">Atau Tempelkan URL / Path Lokal (jika tidak unggah file)</label>
                                 <input type="text" id="galUrl" class="admin-input-txt" placeholder="Contoh: asset/Foto_Baru.jpg atau https://drive.google.com/...">
                             </div>
-                            <div>
-                                <button type="submit" class="admin-btn admin-btn-primary"><i class='bx bx-paper-plane'></i> Publikasikan ke Galeri</button>
+                            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                                <button type="submit" class="admin-btn admin-btn-primary" id="galSubmitBtn"><i class='bx bx-paper-plane'></i> Publikasikan ke Galeri</button>
+                                <button type="button" class="admin-btn admin-btn-secondary" id="galCancelEditBtn" onclick="cancelGaleriEdit()" style="display: none;"><i class='bx bx-x'></i> Batal Edit</button>
                             </div>
                         </form>
                     </div>
@@ -1082,6 +1084,91 @@
                             <div class="admin-form-group" style="margin-top: 10px;">
                                 <label for="dbInfoKaldikUrl">Tautan / File Kalender Akademik Resmi</label>
                                 <input type="text" id="dbInfoKaldikUrl" class="admin-input-txt" required placeholder="Contoh: asset/KALDIK 2025-2026.pdf atau link Google Drive...">
+                            </div>
+                            <div class="admin-form-row-2" style="margin-top: 10px;">
+                                <div class="admin-form-group">
+                                    <label for="dbHeroImageUrl">Foto Hero Section</label>
+                                    <select id="dbHeroImageUrl" class="admin-input-txt">
+                                        <option value="asset/Baju_pramuka.jpg">Baju Pramuka</option>
+                                        <option value="asset/Upacara.jpg">Upacara</option>
+                                        <option value="asset/Kelas 1.jpg">Kelas 1</option>
+                                        <option value="asset/Lorong.jpg">Lorong Sekolah</option>
+                                        <option value="asset/Piala.jpg">Piala Prestasi</option>
+                                    </select>
+                                </div>
+                                <div class="admin-form-group">
+                                    <label for="dbProfileImageUrl">Foto Profil Sekolah Utama</label>
+                                    <select id="dbProfileImageUrl" class="admin-input-txt">
+                                        <option value="asset/Upacara.jpg">Upacara</option>
+                                        <option value="asset/Baju_pramuka.jpg">Baju Pramuka</option>
+                                        <option value="asset/Kelas 1.jpg">Kelas 1</option>
+                                        <option value="asset/Lorong.jpg">Lorong Sekolah</option>
+                                        <option value="asset/Piala.jpg">Piala Prestasi</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="admin-form-group" style="margin-top: 10px;">
+                                <label for="dbProfileSubImageUrl">Foto Profil Sekolah Pendamping</label>
+                                <select id="dbProfileSubImageUrl" class="admin-input-txt">
+                                    <option value="asset/Baju_pramuka.jpg">Baju Pramuka</option>
+                                    <option value="asset/Upacara.jpg">Upacara</option>
+                                    <option value="asset/Kelas 1.jpg">Kelas 1</option>
+                                    <option value="asset/Lorong.jpg">Lorong Sekolah</option>
+                                    <option value="asset/Piala.jpg">Piala Prestasi</option>
+                                </select>
+                            </div>
+                            <div class="admin-form-row-2" style="margin-top: 10px;">
+                                <div class="admin-form-group">
+                                    <label>Upload Foto Hero ke Supabase</label>
+                                    <div class="file-upload-zone" id="zoneFileHeroImage">
+                                        <i class='bx bx-cloud-upload upload-icon'></i>
+                                        <span class="upload-title">Klik / seret foto hero</span>
+                                        <span class="upload-subtitle">JPG/PNG/WebP (maks. 5MB)</span>
+                                        <input type="file" id="fileHeroImage" accept="image/*" style="display: none;">
+                                        <div class="file-preview-card" id="previewFileHeroImage" style="display: none;">
+                                            <i class='bx bxs-file-image file-icon' style="color:#ef4444;"></i>
+                                            <div class="file-info">
+                                                <span class="file-name" id="nameFileHeroImage">hero.jpg</span>
+                                                <span class="file-size" id="sizeFileHeroImage">0 KB</span>
+                                            </div>
+                                            <button type="button" class="btn-remove-file" id="removeFileHeroImage"><i class='bx bx-x'></i></button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="admin-form-group">
+                                    <label>Upload Foto Profil Utama ke Supabase</label>
+                                    <div class="file-upload-zone" id="zoneFileProfileImage">
+                                        <i class='bx bx-cloud-upload upload-icon'></i>
+                                        <span class="upload-title">Klik / seret foto profil</span>
+                                        <span class="upload-subtitle">JPG/PNG/WebP (maks. 5MB)</span>
+                                        <input type="file" id="fileProfileImage" accept="image/*" style="display: none;">
+                                        <div class="file-preview-card" id="previewFileProfileImage" style="display: none;">
+                                            <i class='bx bxs-file-image file-icon' style="color:#ef4444;"></i>
+                                            <div class="file-info">
+                                                <span class="file-name" id="nameFileProfileImage">profil.jpg</span>
+                                                <span class="file-size" id="sizeFileProfileImage">0 KB</span>
+                                            </div>
+                                            <button type="button" class="btn-remove-file" id="removeFileProfileImage"><i class='bx bx-x'></i></button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="admin-form-group" style="margin-top: 10px;">
+                                <label>Upload Foto Profil Pendamping ke Supabase</label>
+                                <div class="file-upload-zone" id="zoneFileProfileSubImage">
+                                    <i class='bx bx-cloud-upload upload-icon'></i>
+                                    <span class="upload-title">Klik / seret foto pendamping</span>
+                                    <span class="upload-subtitle">JPG/PNG/WebP (maks. 5MB)</span>
+                                    <input type="file" id="fileProfileSubImage" accept="image/*" style="display: none;">
+                                    <div class="file-preview-card" id="previewFileProfileSubImage" style="display: none;">
+                                        <i class='bx bxs-file-image file-icon' style="color:#ef4444;"></i>
+                                        <div class="file-info">
+                                            <span class="file-name" id="nameFileProfileSubImage">pendamping.jpg</span>
+                                            <span class="file-size" id="sizeFileProfileSubImage">0 KB</span>
+                                        </div>
+                                        <button type="button" class="btn-remove-file" id="removeFileProfileSubImage"><i class='bx bx-x'></i></button>
+                                    </div>
+                                </div>
                             </div>
                             <div class="admin-form-group" style="margin-top: 10px;">
                                 <label for="dbInfoGasUrl" style="color:#10b981; font-weight:700;"><i class='bx bxl-google-drive' style="color:#34a853; font-size:14px; margin-right:2px; vertical-align:middle;"></i> URL Google Apps Script Upload (Unggah Dokumen PPDB)</label>
