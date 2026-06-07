@@ -368,7 +368,7 @@
                         <h2 class="section-title">FAQ</h2>
                     </div>
                     
-                    <div class="faq-accordion">
+                    <div class="faq-accordion" id="faqAccordion">
                         <div class="accordion-item">
                             <div class="accordion-header">
                                 <h4>Bagaimana cara mendaftar di SDN Tunas Mekar?</h4>
@@ -810,6 +810,7 @@
             <div class="admin-db-tabs">
                 <button class="admin-tab-btn active" onclick="switchAdminTab('tab-aspirasi')"><i class='bx bx-chat'></i> Kelola Aspirasi</button>
                 <button class="admin-tab-btn" onclick="switchAdminTab('tab-berita')"><i class='bx bx-news'></i> Kelola Berita</button>
+                <button class="admin-tab-btn" onclick="switchAdminTab('tab-faq')"><i class='bx bx-help-circle'></i> Kelola FAQ</button>
                 <button class="admin-tab-btn" onclick="switchAdminTab('tab-poster')"><i class='bx bx-carousel'></i> Poster Daftar</button>
                 <button class="admin-tab-btn" onclick="switchAdminTab('tab-galeri')"><i class='bx bx-images'></i> Kelola Galeri</button>
                 <button class="admin-tab-btn" onclick="switchAdminTab('tab-info')"><i class='bx bx-cog'></i> Statistik & Info Sekolah</button>
@@ -893,8 +894,46 @@
                         </table>
                     </div>
                 </div>
+
+                <!-- Panel 3: FAQ -->
+                <div class="admin-panel-content" id="tab-faq">
+                    <div class="admin-form-box">
+                        <h4 class="admin-form-title"><i class='bx bx-plus-circle'></i> Tambah / Edit FAQ</h4>
+                        <form id="adminFaqForm" class="admin-form">
+                            <input type="hidden" id="faqEditIndex">
+                            <div class="admin-form-group">
+                                <label for="faqQuestion">Pertanyaan</label>
+                                <input type="text" id="faqQuestion" class="admin-input-txt" required placeholder="Tulis pertanyaan FAQ...">
+                            </div>
+                            <div class="admin-form-group">
+                                <label for="faqAnswer">Jawaban</label>
+                                <textarea id="faqAnswer" class="admin-input-txt" rows="4" required placeholder="Tulis jawaban FAQ..."></textarea>
+                            </div>
+                            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                                <button type="submit" class="admin-btn admin-btn-primary" id="faqSubmitBtn"><i class='bx bx-paper-plane'></i> Simpan FAQ</button>
+                                <button type="button" class="admin-btn admin-btn-secondary" id="faqCancelEditBtn" onclick="cancelFaqEdit()" style="display: none;"><i class='bx bx-x'></i> Batal Edit</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <h4 style="font-size: 15px; color: var(--title-color); font-weight: 600; margin-bottom: 15px;">Daftar FAQ Aktif</h4>
+                    <div class="admin-table-wrapper">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Pertanyaan</th>
+                                    <th>Jawaban</th>
+                                    <th style="width: 18%;">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="adminFaqTableBody">
+                                <!-- Data diisi via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
                 
-                <!-- Panel 3: Poster Pendaftaran -->
+                <!-- Panel 4: Poster Pendaftaran -->
                 <div class="admin-panel-content" id="tab-poster">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
                         <h4 style="font-size: 15px; color: var(--title-color); font-weight: 600;">Kelola Poster Tombol Daftar Sekarang</h4>
@@ -959,7 +998,7 @@
                     </div>
                 </div>
                 
-                <!-- Panel 4: Galeri -->
+                <!-- Panel 5: Galeri -->
                 <div class="admin-panel-content" id="tab-galeri">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
                         <h4 style="font-size: 15px; color: var(--title-color); font-weight: 600;">Manajemen Item Galeri (Foto & Video)</h4>
@@ -1036,7 +1075,7 @@
                     </div>
                 </div>
 
-                <!-- Panel 5: Statistik & Info -->
+                <!-- Panel 6: Statistik & Info -->
                 <div class="admin-panel-content" id="tab-info">
                     <form id="adminProfileForm" class="admin-form">
                         <!-- Box Statistik -->

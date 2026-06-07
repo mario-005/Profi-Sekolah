@@ -1268,6 +1268,7 @@ if (btnTrack && trackerInput && trackerResult) {
 const L_KEY_STATS = 'sdn_tunas_stats';
 const L_KEY_INFO = 'sdn_tunas_info';
 const L_KEY_NEWS = 'sdn_tunas_news';
+const L_KEY_FAQ = 'sdn_tunas_faq';
 const L_KEY_ASPIRASI = 'sdn_tunas_aspirasi';
 const L_KEY_PPDB = 'sdn_tunas_ppdb';
 const L_KEY_KALDIK_URL = 'sdn_tunas_kaldik_url';
@@ -1359,6 +1360,24 @@ const defaultNews = [
         month: "Mei",
         title: "Program \"Jumat Rohani\" Membentuk Karakter Islami yang Tangguh",
         excerpt: "Membiasakan shalat berjamaah, pembacaan tadarus surah pendek, serta kajian akhlak kesiswaan. Program Jumat Rohani terbukti membangun motivasi spiritual bagi seluruh siswa..."
+    }
+];
+const defaultFaq = [
+    {
+        question: "Bagaimana cara mendaftar di SDN Tunas Mekar?",
+        answer: "Pendaftaran PPDB online dapat dilakukan dengan klik tombol <strong>Daftar Sekarang</strong> di web ini atau mendatangi kantor tata usaha sekolah kami selama hari kerja aktif."
+    },
+    {
+        question: "Apakah ada program beasiswa untuk siswa?",
+        answer: "Ya, kami memfasilitasi dan menyalurkan program bantuan pemerintah berupa <strong>Beasiswa PIP (Program Indonesia Pintar)</strong> serta bantuan operasional kesiswaan daerah."
+    },
+    {
+        question: "Kegiatan ekstrakurikuler apa saja yang tersedia?",
+        answer: "Kami memfokuskan pembinaan kesiswaan pada ekstrakurikuler wajib <strong>Pramuka</strong> (setiap hari Jumat) dan ekstrakurikuler pilihan olahraga <strong>Futsal</strong> (setiap hari Sabtu)."
+    },
+    {
+        question: "Kurikulum apa yang digunakan saat ini?",
+        answer: "SDN Tunas Mekar sepenuhnya telah mengadopsi <strong>Kurikulum Merdeka</strong> yang berfokus pada kedalaman konsep, projek karakter (P5), serta fleksibilitas pembelajaran."
     }
 ];
 const defaultGaleri = [
