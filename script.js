@@ -424,9 +424,111 @@ if (modalBody) {
     originalModalHTML = modalBody.innerHTML;
 }
 
+function escapeHTML(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function getRegistrationPosters() {
+    if (typeof L_KEY_POSTERS === 'undefined') {
+        return [
+            { id: 'POSTER-2', title: 'Poster Pendaftaran 2', src: 'asset/Poster Pendaftaran 2.png' },
+            { id: 'POSTER-3', title: 'Poster Pendaftaran 3', src: 'asset/Poster Pendaftaran 3.png' },
+            { id: 'POSTER-4', title: 'Poster Pendaftaran 4', src: 'asset/Poster Pendaftaran 4.png' },
+            { id: 'POSTER-5', title: 'Poster Pendaftaran 5', src: 'asset/Poster Pendaftaran 5.png' }
+        ];
+    }
+
+    const saved = JSON.parse(localStorage.getItem(L_KEY_POSTERS) || '[]');
+    return saved.length ? saved : defaultRegistrationPosters;
+}
+
+function getRegistrationPosterModalHTML() {
+    const posters = getRegistrationPosters();
+    const slides = posters.map((poster) => `
+                <div class="modal-poster-slide" aria-label="${escapeHTML(poster.title)}">
+                    <img src="${escapeHTML(poster.src)}" alt="${escapeHTML(poster.title)}" class="modal-poster-img" loading="lazy">
+                </div>`).join('');
+    const dots = posters.map((poster, index) => `
+                <button type="button" class="${index === 0 ? 'active' : ''}" data-slide="${index}" aria-label="${escapeHTML(poster.title)}"></button>`).join('');
+
+    return `
+    <div class="modal-poster-view">
+        <p class="modal-poster-intro">Informasi PPDB SDN Tunas Mekar tersedia dalam poster berikut. Gunakan tombol panah atau geser poster untuk melihat semua informasi pendaftaran.</p>
+
+        <div class="modal-poster-carousel-wrapper" id="modalPosterCarouselWrapper">
+            <div class="modal-poster-carousel" id="modalPosterCarousel">
+${slides}
+            </div>
+
+            <button type="button" class="modal-poster-btn modal-poster-prev" id="modalPosterPrevBtn" aria-label="Poster sebelumnya">
+                <i class='bx bx-chevron-left'></i>
+            </button>
+            <button type="button" class="modal-poster-btn modal-poster-next" id="modalPosterNextBtn" aria-label="Poster berikutnya">
+                <i class='bx bx-chevron-right'></i>
+            </button>
+
+            <div class="modal-poster-dots" id="modalPosterDots">
+${dots}
+            </div>
+        </div>
+    </div>
+`;
+}
+
+function initRegistrationModalPosterCarousel() {
+    const carousel = document.getElementById('modalPosterCarousel');
+    const wrapper = document.getElementById('modalPosterCarouselWrapper');
+    const prevBtn = document.getElementById('modalPosterPrevBtn');
+    const nextBtn = document.getElementById('modalPosterNextBtn');
+    const dots = Array.from(document.querySelectorAll('#modalPosterDots button'));
+
+    if (!carousel || dots.length === 0) return;
+
+    const slideCount = carousel.querySelectorAll('.modal-poster-slide').length;
+    let currentSlide = 0;
+    let touchStartX = 0;
+
+    const showSlide = (index) => {
+        currentSlide = (index + slideCount) % slideCount;
+        carousel.style.transform = `translateX(-${currentSlide * 100}%)`;
+        dots.forEach((dot, dotIndex) => {
+            dot.classList.toggle('active', dotIndex === currentSlide);
+        });
+    };
+
+    prevBtn?.addEventListener('click', () => showSlide(currentSlide - 1));
+    nextBtn?.addEventListener('click', () => showSlide(currentSlide + 1));
+
+    dots.forEach((dot) => {
+        dot.addEventListener('click', () => showSlide(Number(dot.dataset.slide || 0)));
+    });
+
+    wrapper?.addEventListener('touchstart', (event) => {
+        touchStartX = event.touches[0].clientX;
+    }, { passive: true });
+
+    wrapper?.addEventListener('touchend', (event) => {
+        const distance = event.changedTouches[0].clientX - touchStartX;
+        if (Math.abs(distance) > 50) {
+            distance < 0 ? showSlide(currentSlide + 1) : showSlide(currentSlide - 1);
+        }
+    }, { passive: true });
+
+    showSlide(0);
+}
+
 // Function to open modal
 const openModal = () => {
     if (modal) {
+        if (modalBody) {
+            modalBody.innerHTML = getRegistrationPosterModalHTML();
+            initRegistrationModalPosterCarousel();
+        }
         modal.classList.add('show');
         document.body.style.overflow = 'hidden';
     }
@@ -1169,6 +1271,7 @@ const L_KEY_PPDB = 'sdn_tunas_ppdb';
 const L_KEY_KALDIK_URL = 'sdn_tunas_kaldik_url';
 const L_KEY_GAS_URL = 'sdn_tunas_gas_url';
 const L_KEY_GALERI = 'sdn_tunas_galeri';
+const L_KEY_POSTERS = 'sdn_tunas_registration_posters';
 const L_KEY_SUPABASE_URL = 'sdn_tunas_supabase_url';
 const L_KEY_SUPABASE_KEY = 'sdn_tunas_supabase_key';
 const L_KEY_SUPABASE_BUCKET = 'sdn_tunas_supabase_bucket';
@@ -1178,7 +1281,8 @@ let selectedFiles = {
     FileKK: null,
     FileAkta: null,
     FileKIA: null,
-    FileGaleri: null
+    FileGaleri: null,
+    FilePoster: null
 };
 
 // Data Default Bawaan (Hasil Survei Riil)
@@ -1258,6 +1362,13 @@ const defaultGaleri = [
     { id: 'GAL-1009', type: 'video', title: 'Suasana Sekolah 1',                src: 'asset/Suasana 1.mp4' },
     { id: 'GAL-1010', type: 'video', title: 'Suasana Sekolah 2',                src: 'asset/Suasana 2.mp4' },
     { id: 'GAL-1011', type: 'video', title: 'Suasana Sekolah 3',                src: 'asset/Suasana 3.mp4' }
+];
+
+const defaultRegistrationPosters = [
+    { id: 'POSTER-2', title: 'Poster Pendaftaran 2', src: 'asset/Poster Pendaftaran 2.png' },
+    { id: 'POSTER-3', title: 'Poster Pendaftaran 3', src: 'asset/Poster Pendaftaran 3.png' },
+    { id: 'POSTER-4', title: 'Poster Pendaftaran 4', src: 'asset/Poster Pendaftaran 4.png' },
+    { id: 'POSTER-5', title: 'Poster Pendaftaran 5', src: 'asset/Poster Pendaftaran 5.png' }
 ];
 
 // 1. FUNGSI TOAST NOTIFICATION
@@ -1448,6 +1559,11 @@ function initLocalState() {
     if (!localStorage.getItem(L_KEY_GALERI)) {
         localStorage.setItem(L_KEY_GALERI, JSON.stringify(defaultGaleri));
     }
+
+    // 9. Inisialisasi Poster Pendaftaran
+    if (!localStorage.getItem(L_KEY_POSTERS)) {
+        localStorage.setItem(L_KEY_POSTERS, JSON.stringify(defaultRegistrationPosters));
+    }
 }
 
 // Render data statis dan berita ke halaman publik
@@ -1569,8 +1685,11 @@ function loadAdminDashboardData() {
     renderAdminAspirations();
     renderAdminNews();
     renderAdminPPDB();
+    renderAdminPosters();
     renderAdminGaleri();
+    setupPosterUploadZone();
     setupGaleriUploadZone();
+    bindAdminPosterForm();
     bindAdminGaleriForm();
     updateGaleriSupabaseStatus();
 }
@@ -1783,6 +1902,7 @@ function renderAdminNews() {
             <td style="font-weight: 600; color: var(--primary-color);">${item.title}</td>
             <td><span style="font-size:12px; color:#666;">${item.excerpt.substring(0, 75)}...</span></td>
             <td>
+                <button class="admin-btn admin-btn-secondary" onclick="editNews(${index})"><i class='bx bx-edit'></i> Edit</button>
                 <button class="admin-btn admin-btn-del" onclick="deleteNews(${index})"><i class='bx bx-trash'></i> Hapus</button>
             </td>
         `;
@@ -1800,11 +1920,17 @@ if (adminBeritaForm) {
         const month = document.getElementById('newsMonth').value;
         const title = document.getElementById('newsTitle').value;
         const excerpt = document.getElementById('newsExcerpt').value;
+        const editIndexInput = document.getElementById('newsEditIndex');
+        const editIndex = editIndexInput?.value;
         
         const news = JSON.parse(localStorage.getItem(L_KEY_NEWS)) || [];
         
-        // Masukkan di urutan teratas (unshift)
-        news.unshift({ day, month, title, excerpt });
+        if (editIndex !== '' && editIndex !== undefined) {
+            news[Number(editIndex)] = { day, month, title, excerpt };
+        } else {
+            // Masukkan di urutan teratas (unshift)
+            news.unshift({ day, month, title, excerpt });
+        }
         
         // Simpan & Render
         localStorage.setItem(L_KEY_NEWS, JSON.stringify(news));
@@ -1812,10 +1938,50 @@ if (adminBeritaForm) {
         renderPublicUI();
         
         // Reset form
-        adminBeritaForm.reset();
+        resetNewsForm();
         
-        showAdminToast('Berita baru berhasil dipublikasikan!', 'success');
+        showAdminToast(editIndex !== '' && editIndex !== undefined ? 'Berita berhasil diperbarui!' : 'Berita baru berhasil dipublikasikan!', 'success');
     });
+}
+
+function resetNewsForm() {
+    const form = document.getElementById('adminBeritaForm');
+    const editIndexInput = document.getElementById('newsEditIndex');
+    const submitBtn = document.getElementById('newsSubmitBtn');
+    const cancelBtn = document.getElementById('newsCancelEditBtn');
+
+    if (form) form.reset();
+    if (editIndexInput) editIndexInput.value = '';
+    if (submitBtn) submitBtn.innerHTML = `<i class='bx bx-paper-plane'></i> Terbitkan Berita`;
+    if (cancelBtn) cancelBtn.style.display = 'none';
+}
+
+function editNews(index) {
+    const news = JSON.parse(localStorage.getItem(L_KEY_NEWS)) || [];
+    const item = news[index];
+    if (!item) return;
+
+    const editIndexInput = document.getElementById('newsEditIndex');
+    const dayInput = document.getElementById('newsDay');
+    const monthInput = document.getElementById('newsMonth');
+    const titleInput = document.getElementById('newsTitle');
+    const excerptInput = document.getElementById('newsExcerpt');
+    const submitBtn = document.getElementById('newsSubmitBtn');
+    const cancelBtn = document.getElementById('newsCancelEditBtn');
+
+    if (editIndexInput) editIndexInput.value = index;
+    if (dayInput) dayInput.value = item.day;
+    if (monthInput) monthInput.value = item.month;
+    if (titleInput) titleInput.value = item.title;
+    if (excerptInput) excerptInput.value = item.excerpt;
+    if (submitBtn) submitBtn.innerHTML = `<i class='bx bx-save'></i> Simpan Perubahan`;
+    if (cancelBtn) cancelBtn.style.display = 'inline-flex';
+
+    document.getElementById('adminBeritaForm')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function cancelNewsEdit() {
+    resetNewsForm();
 }
 
 // Fungsi Hapus Berita
@@ -1828,6 +1994,7 @@ function deleteNews(index) {
     localStorage.setItem(L_KEY_NEWS, JSON.stringify(news));
     renderAdminNews();
     renderPublicUI();
+    resetNewsForm();
     
     showAdminToast('Berita berhasil dihapus!', 'success');
 }
@@ -1899,6 +2066,7 @@ function resetFactorySettings() {
     localStorage.removeItem(L_KEY_ASPIRASI);
     localStorage.removeItem(L_KEY_PPDB);
     localStorage.removeItem(L_KEY_KALDIK_URL);
+    localStorage.removeItem(L_KEY_POSTERS);
     
     // Tutup Modal
     const dbModal = document.getElementById('adminDashboardModal');
@@ -2059,7 +2227,204 @@ function exportPPDBData() {
 }
 
 // ============================================================
-// 8. PANEL KELOLA GALERI (ADMIN)
+// 12. PANEL KELOLA POSTER PENDAFTARAN (ADMIN)
+// ============================================================
+
+function getStoredRegistrationPosters() {
+    return JSON.parse(localStorage.getItem(L_KEY_POSTERS)) || [];
+}
+
+function saveRegistrationPosters(items) {
+    localStorage.setItem(L_KEY_POSTERS, JSON.stringify(items));
+}
+
+function resetPosterForm() {
+    const form = document.getElementById('adminPosterForm');
+    const editId = document.getElementById('posterEditId');
+    const submitBtn = document.getElementById('posterSubmitBtn');
+    const cancelBtn = document.getElementById('posterCancelEditBtn');
+    const preview = document.getElementById('previewFilePoster');
+
+    if (form) form.reset();
+    if (editId) editId.value = '';
+    if (submitBtn) submitBtn.innerHTML = `<i class='bx bx-save'></i> Simpan Poster`;
+    if (cancelBtn) cancelBtn.style.display = 'none';
+    if (preview) preview.style.display = 'none';
+    selectedFiles.FilePoster = null;
+}
+
+function renderAdminPosters() {
+    const tblBody = document.getElementById('adminPosterTableBody');
+    if (!tblBody) return;
+
+    const items = getStoredRegistrationPosters();
+    tblBody.innerHTML = '';
+
+    if (items.length === 0) {
+        tblBody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: #999;">Belum ada poster pendaftaran. Tambahkan poster baru agar modal Daftar Sekarang menampilkan informasi.</td></tr>`;
+        return;
+    }
+
+    items.forEach((item) => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>
+                <div class="admin-gal-thumb admin-poster-thumb">
+                    <img src="${escapeHTML(item.src)}" alt="${escapeHTML(item.title)}" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                    <i class='bx bx-image admin-gal-icon' style="display:none;"></i>
+                </div>
+            </td>
+            <td><strong>${escapeHTML(item.title)}</strong><br><span style="font-size: 11px; color: #999;">ID: ${escapeHTML(item.id)}</span></td>
+            <td><span class="gal-source-text">${escapeHTML(item.src)}</span></td>
+            <td>
+                <button class="admin-btn admin-btn-secondary" onclick="editPoster('${escapeHTML(item.id)}')"><i class='bx bx-edit'></i> Edit</button>
+                <button class="admin-btn admin-btn-del" onclick="deletePoster('${escapeHTML(item.id)}')"><i class='bx bx-trash'></i> Hapus</button>
+            </td>
+        `;
+        tblBody.appendChild(row);
+    });
+}
+
+function setupPosterUploadZone() {
+    if (typeof setupFileUploadZone !== 'function') return;
+    setupFileUploadZone(
+        'zoneFilePoster', 'posterFile',
+        'previewFilePoster', 'posterFileName', 'posterFileSize',
+        'removeFilePoster', 'FilePoster', 5
+    );
+}
+
+async function resolvePosterSource(file, manualUrl, submitBtn) {
+    if (!file) return manualUrl;
+
+    if (isSupabaseConfigured()) {
+        if (submitBtn) submitBtn.innerHTML = `<i class='bx bx-loader-alt bx-spin'></i> Mengunggah Poster...`;
+        return uploadFileToSupabase(file, (pct) => {
+            if (submitBtn) submitBtn.innerHTML = `<i class='bx bx-loader-alt bx-spin'></i> Mengunggah... ${pct}%`;
+        });
+    }
+
+    const gasUrl = localStorage.getItem(L_KEY_GAS_URL) || '';
+    if (gasUrl) {
+        if (submitBtn) submitBtn.innerHTML = `<i class='bx bx-loader-alt bx-spin'></i> Mengunggah ke Drive...`;
+        return uploadFileToGAS(gasUrl, file);
+    }
+
+    return `asset/${file.name}`;
+}
+
+function bindAdminPosterForm() {
+    const form = document.getElementById('adminPosterForm');
+    if (!form || form.dataset.bound === 'true') return;
+
+    form.dataset.bound = 'true';
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const editId = document.getElementById('posterEditId')?.value || '';
+        const title = document.getElementById('posterTitle')?.value.trim() || '';
+        const manualUrl = document.getElementById('posterUrl')?.value.trim() || '';
+        const submitBtn = document.getElementById('posterSubmitBtn');
+        const file = selectedFiles.FilePoster;
+
+        if (!title) {
+            showCustomAlert("Judul Kosong", "Mohon isi judul poster terlebih dahulu.", "warning");
+            return;
+        }
+
+        if (!file && !manualUrl) {
+            showCustomAlert("Sumber Poster Kosong", "Unggah gambar poster atau isi URL/path gambar poster terlebih dahulu.", "warning");
+            return;
+        }
+
+        const originalText = submitBtn?.innerHTML || '';
+        let savedOk = false;
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = `<i class='bx bx-loader-alt bx-spin'></i> Menyimpan...`;
+        }
+
+        try {
+            const src = await resolvePosterSource(file, manualUrl, submitBtn);
+            const items = getStoredRegistrationPosters();
+
+            if (editId) {
+                const found = items.find(item => item.id === editId);
+                if (found) {
+                    found.title = title;
+                    found.src = src;
+                }
+                showAdminToast(`Poster "${title}" berhasil diperbarui!`, 'success');
+            } else {
+                items.push({
+                    id: 'POSTER-' + Math.floor(1000 + Math.random() * 9000),
+                    title,
+                    src
+                });
+                showAdminToast(`Poster "${title}" berhasil ditambahkan!`, 'success');
+            }
+
+            saveRegistrationPosters(items);
+            renderAdminPosters();
+            resetPosterForm();
+            savedOk = true;
+        } catch (err) {
+            showCustomAlert("Gagal Menyimpan Poster", `Poster tidak dapat disimpan: <strong>${err.message}</strong>`, "error");
+        } finally {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                if (!savedOk) {
+                    submitBtn.innerHTML = originalText || `<i class='bx bx-save'></i> Simpan Poster`;
+                }
+            }
+        }
+    });
+}
+
+function editPoster(id) {
+    const items = getStoredRegistrationPosters();
+    const found = items.find(item => item.id === id);
+    if (!found) return;
+
+    const editId = document.getElementById('posterEditId');
+    const title = document.getElementById('posterTitle');
+    const url = document.getElementById('posterUrl');
+    const submitBtn = document.getElementById('posterSubmitBtn');
+    const cancelBtn = document.getElementById('posterCancelEditBtn');
+
+    if (editId) editId.value = found.id;
+    if (title) title.value = found.title;
+    if (url) url.value = found.src;
+    if (submitBtn) submitBtn.innerHTML = `<i class='bx bx-save'></i> Simpan Perubahan`;
+    if (cancelBtn) cancelBtn.style.display = 'inline-flex';
+
+    document.getElementById('adminPosterForm')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function cancelPosterEdit() {
+    resetPosterForm();
+}
+
+function deletePoster(id) {
+    if (!confirm(`Apakah Anda yakin ingin menghapus poster ${id}?`)) return;
+
+    const items = getStoredRegistrationPosters().filter(item => item.id !== id);
+    saveRegistrationPosters(items);
+    renderAdminPosters();
+    resetPosterForm();
+    showAdminToast(`Poster ${id} berhasil dihapus!`, 'success');
+}
+
+function resetRegistrationPosters() {
+    if (!confirm('Pulihkan poster pendaftaran ke poster bawaan 2-5? Poster yang Anda tambahkan akan hilang.')) return;
+    saveRegistrationPosters(defaultRegistrationPosters);
+    renderAdminPosters();
+    resetPosterForm();
+    showAdminToast('Poster pendaftaran bawaan berhasil dipulihkan!', 'success');
+}
+
+// ============================================================
+// 13. PANEL KELOLA GALERI (ADMIN)
 // ============================================================
 
 // Render tabel galeri di dashboard admin
@@ -2140,10 +2505,14 @@ function setupGaleriUploadZone() {
 function bindAdminGaleriForm() {
     const form = document.getElementById('adminGaleriForm');
     if (!form) return;
+    if (form.dataset.bound === 'true') return;
+    form.dataset.bound = 'true';
+
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
 
-        const btnSubmit = form.querySelector('.btn-submit');
+        const btnSubmit = form.querySelector('button[type="submit"]');
+        if (!btnSubmit) return;
         const originalText = btnSubmit.innerHTML;
 
         const type   = document.getElementById('galType').value;

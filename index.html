@@ -514,16 +514,6 @@
             </div>
         </section>
 
-        <!-- CTA Section -->
-        <section class="cta section">
-            <div class="container">
-                <div class="cta-container reveal-bottom">
-                    <h2 class="cta-title">Mari Bergabung Bersama SDN Tunas Mekar</h2>
-                    <p class="cta-description">Daftar putra-putri Anda sekarang dan jadilah bagian dari keluarga besar SDN Tunas Mekar dalam mencetak generasi unggul.</p>
-                    <a href="javascript:void(0)" class="btn btn-white btn-lg btn-open-reg">Daftar Sekarang <i class='bx bx-right-arrow-alt'></i></a>
-                </div>
-            </div>
-        </section>
     </main>
 
     <!-- Footer -->
@@ -582,7 +572,7 @@
     <div class="modal-container" id="registrationModal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3 class="modal-title"><i class='bx bxs-graduation'></i> Pendaftaran Siswa Baru</h3>
+                <h3 class="modal-title"><i class='bx bxs-graduation'></i> Info Pendaftaran Siswa Baru</h3>
                 <span class="modal-close" id="closeRegistrationModal"><i class='bx bx-x'></i></span>
             </div>
             <div class="modal-body" id="modalBody">
@@ -820,7 +810,7 @@
             <div class="admin-db-tabs">
                 <button class="admin-tab-btn active" onclick="switchAdminTab('tab-aspirasi')"><i class='bx bx-chat'></i> Kelola Aspirasi</button>
                 <button class="admin-tab-btn" onclick="switchAdminTab('tab-berita')"><i class='bx bx-news'></i> Kelola Berita</button>
-                <button class="admin-tab-btn" onclick="switchAdminTab('tab-ppdb')"><i class='bx bxs-group'></i> Pendaftar PPDB</button>
+                <button class="admin-tab-btn" onclick="switchAdminTab('tab-poster')"><i class='bx bx-carousel'></i> Poster Daftar</button>
                 <button class="admin-tab-btn" onclick="switchAdminTab('tab-galeri')"><i class='bx bx-images'></i> Kelola Galeri</button>
                 <button class="admin-tab-btn" onclick="switchAdminTab('tab-info')"><i class='bx bx-cog'></i> Statistik & Info Sekolah</button>
             </div>
@@ -860,6 +850,7 @@
                     <div class="admin-form-box">
                         <h4 class="admin-form-title"><i class='bx bx-plus-circle'></i> Publikasikan Berita Baru</h4>
                         <form id="adminBeritaForm" class="admin-form">
+                            <input type="hidden" id="newsEditIndex">
                             <div class="admin-form-row-2">
                                 <div class="admin-form-group">
                                     <label for="newsDay">Tanggal (Contoh: 28)</label>
@@ -878,8 +869,9 @@
                                 <label for="newsExcerpt">Ringkasan Berita</label>
                                 <textarea id="newsExcerpt" class="admin-input-txt" rows="3" required placeholder="Tulis isi ringkasan pengumuman untuk wali murid..."></textarea>
                             </div>
-                            <div>
-                                <button type="submit" class="admin-btn admin-btn-primary"><i class='bx bx-paper-plane'></i> Terbitkan Berita</button>
+                            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                                <button type="submit" class="admin-btn admin-btn-primary" id="newsSubmitBtn"><i class='bx bx-paper-plane'></i> Terbitkan Berita</button>
+                                <button type="button" class="admin-btn admin-btn-secondary" id="newsCancelEditBtn" onclick="cancelNewsEdit()" style="display: none;"><i class='bx bx-x'></i> Batal Edit</button>
                             </div>
                         </form>
                     </div>
@@ -902,29 +894,65 @@
                     </div>
                 </div>
                 
-                <!-- Panel 3: PPDB -->
-                <div class="admin-panel-content" id="tab-ppdb">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                        <h4 style="font-size: 15px; color: var(--title-color); font-weight: 600;">Daftar Calon Siswa Baru Terdaftar</h4>
-                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                            <a href="https://docs.google.com/spreadsheets/d/1JhEypPJd17sVJ2Lp6ba3k-W-CDTh14OXS9bHfqhQJTw/edit?usp=sharing" target="_blank" class="admin-btn admin-btn-sheets"><i class='bx bx-table'></i> Buka Spreadsheet</a>
-                            <button class="admin-btn admin-btn-secondary" onclick="exportPPDBData()"><i class='bx bx-copy'></i> Ekspor Teks Data</button>
-                            <button class="admin-btn admin-btn-secondary" onclick="resetPPDBDemo()"><i class='bx bx-refresh'></i> Muat Ulang Demo</button>
-                        </div>
+                <!-- Panel 3: Poster Pendaftaran -->
+                <div class="admin-panel-content" id="tab-poster">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+                        <h4 style="font-size: 15px; color: var(--title-color); font-weight: 600;">Kelola Poster Tombol Daftar Sekarang</h4>
+                        <button class="admin-btn admin-btn-secondary" onclick="resetRegistrationPosters()"><i class='bx bx-refresh'></i> Pulihkan Poster Bawaan</button>
                     </div>
+
+                    <div class="admin-form-box">
+                        <h4 class="admin-form-title"><i class='bx bx-plus-circle'></i> Tambah / Edit Poster Pendaftaran</h4>
+                        <form id="adminPosterForm" class="admin-form">
+                            <input type="hidden" id="posterEditId">
+                            <div class="admin-form-row-2">
+                                <div class="admin-form-group">
+                                    <label for="posterTitle">Judul Poster</label>
+                                    <input type="text" id="posterTitle" class="admin-input-txt" required placeholder="Contoh: Poster Pendaftaran 6">
+                                </div>
+                                <div class="admin-form-group">
+                                    <label for="posterUrl">URL / Path Gambar Poster</label>
+                                    <input type="text" id="posterUrl" class="admin-input-txt" placeholder="Contoh: asset/Poster Pendaftaran 6.png">
+                                </div>
+                            </div>
+
+                            <div class="admin-form-group">
+                                <label>Unggah Gambar Poster (opsional)</label>
+                                <div class="file-upload-zone" id="zoneFilePoster">
+                                    <i class='bx bx-cloud-upload upload-icon'></i>
+                                    <span class="upload-title">Klik / seret poster ke sini</span>
+                                    <span class="upload-subtitle">Mendukung JPG, PNG, WebP (maks. 5MB)</span>
+                                    <input type="file" id="posterFile" accept="image/*" style="display: none;">
+                                    <div class="file-preview-card" id="previewFilePoster" style="display: none;">
+                                        <i class='bx bxs-file-image file-icon' style="color:#ef4444;"></i>
+                                        <div class="file-info">
+                                            <span class="file-name" id="posterFileName">poster.png</span>
+                                            <span class="file-size" id="posterFileSize">0 KB</span>
+                                        </div>
+                                        <button type="button" class="btn-remove-file" id="removeFilePoster"><i class='bx bx-x'></i></button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                                <button type="submit" class="admin-btn admin-btn-primary" id="posterSubmitBtn"><i class='bx bx-save'></i> Simpan Poster</button>
+                                <button type="button" class="admin-btn admin-btn-secondary" id="posterCancelEditBtn" onclick="cancelPosterEdit()" style="display: none;"><i class='bx bx-x'></i> Batal Edit</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <h4 style="font-size: 15px; color: var(--title-color); font-weight: 600; margin-bottom: 15px;">Daftar Poster Aktif</h4>
                     <div class="admin-table-wrapper">
                         <table class="admin-table">
                             <thead>
                                 <tr>
-                                    <th>ID Daftar</th>
-                                    <th>Nama Calon Siswa</th>
-                                    <th>Wali Murid & Kontak WA</th>
-                                    <th>Jalur & Gender</th>
-                                    <th>Status Verifikasi</th>
-                                    <th>Aksi</th>
+                                    <th style="width: 10%;">Preview</th>
+                                    <th>Judul Poster</th>
+                                    <th>Sumber Gambar</th>
+                                    <th style="width: 18%;">Aksi</th>
                                 </tr>
                             </thead>
-                            <tbody id="adminPPDBTableBody">
+                            <tbody id="adminPosterTableBody">
                                 <!-- Data diisi via JS -->
                             </tbody>
                         </table>
