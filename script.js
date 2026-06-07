@@ -1276,17 +1276,9 @@ function renderPublicUI() {
     
     const navKaldik = document.getElementById('navKaldikLink');
     const footerKaldik = document.getElementById('footerKaldikLink');
-    const galleryKaldik = document.getElementById('galleryKaldikLink');
     
     if (navKaldik) navKaldik.setAttribute('href', kaldikUrl);
     if (footerKaldik) footerKaldik.setAttribute('href', kaldikUrl);
-    if (galleryKaldik) {
-        galleryKaldik.style.cursor = 'pointer';
-        galleryKaldik.onclick = (e) => {
-            e.preventDefault();
-            window.open(kaldikUrl, '_blank');
-        };
-    }
 }
 
 // Memuat data ke form dan tabel di Dashboard Admin
@@ -1853,4 +1845,164 @@ function showCustomAlert(title, message, type = 'error') {
 }
 
 
+/* =========================================
+   14. GALLERY FILTER & LIGHTBOX
+   ========================================= */
+(function initGallery() {
+    const filterContainer = document.getElementById('galleryFilters');
+    const galleryGrid     = document.getElementById('galleryGrid');
+    const emptyState      = document.getElementById('galleryEmpty');
+    const lightbox        = document.getElementById('lightbox');
+    const lbImg           = document.getElementById('lightboxImg');
+    const lbVideo         = document.getElementById('lightboxVideo');
+    const lbTitle         = document.getElementById('lightboxTitle');
+    const lbCounter       = document.getElementById('lightboxCounter');
+    const lbClose         = document.getElementById('lightboxClose');
+    const lbPrev          = document.getElementById('lightboxPrev');
+    const lbNext          = document.getElementById('lightboxNext');
+
+    if (!galleryGrid || !filterContainer) return;
+
+    // -------- Filter Tabs --------
+    const filterButtons = filterContainer.querySelectorAll('.filter-btn');
+
+    const applyFilter = (filter) => {
+        const items = galleryGrid.querySelectorAll('.gallery-item');
+        let visibleCount = 0;
+
+        items.forEach(item => {
+            const type = item.getAttribute('data-type');
+            const show = (filter === 'all') || (type === filter);
+            if (show) {
+                item.classList.remove('is-hidden');
+                visibleCount++;
+            } else {
+                item.classList.add('is-hidden');
+            }
+        });
+
+        if (emptyState) {
+            if (visibleCount === 0) emptyState.classList.remove('hidden');
+            else emptyState.classList.add('hidden');
+        }
+    };
+
+    filterButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            filterButtons.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            applyFilter(btn.getAttribute('data-filter'));
+        });
+    });
+
+    // -------- Lightbox --------
+    let currentItems  = [];
+    let currentIndex  = 0;
+
+    const collectVisibleItems = () => {
+        currentItems = Array.from(galleryGrid.querySelectorAll('.gallery-item:not(.is-hidden)'));
+    };
+
+    const showLightbox = (index) => {
+        if (!lightbox) return;
+        collectVisibleItems();
+        if (currentItems.length === 0) return;
+
+        // Wrap-around
+        if (index < 0) index = currentItems.length - 1;
+        if (index >= currentItems.length) index = 0;
+        currentIndex = index;
+
+        const item  = currentItems[currentIndex];
+        const type  = item.getAttribute('data-type');
+        const title = item.getAttribute('data-title') || '';
+
+        // Reset
+        lbVideo.pause();
+        lbVideo.removeAttribute('src');
+        lbVideo.load();
+        lbImg.removeAttribute('src');
+        lbImg.classList.add('hidden');
+        lbVideo.classList.add('hidden');
+
+        if (type === 'video') {
+            const src = item.getAttribute('data-src');
+            lbVideo.src = src;
+            lbVideo.classList.remove('hidden');
+        } else {
+            const img = item.querySelector('img');
+            if (img) {
+                lbImg.src = img.src;
+                lbImg.alt = img.alt || title;
+                lbImg.classList.remove('hidden');
+            }
+        }
+
+        if (lbTitle)   lbTitle.textContent = title;
+        if (lbCounter) lbCounter.textContent = `${currentIndex + 1} / ${currentItems.length}`;
+
+        // Hide nav buttons if only 1 item
+        if (currentItems.length <= 1) {
+            lbPrev?.classList.add('hidden');
+            lbNext?.classList.add('hidden');
+        } else {
+            lbPrev?.classList.remove('hidden');
+            lbNext?.classList.remove('hidden');
+        }
+
+        lightbox.classList.add('show');
+        document.body.style.overflow = 'hidden';
+    };
+
+    const closeLightbox = () => {
+        if (!lightbox) return;
+        lightbox.classList.remove('show');
+        document.body.style.overflow = '';
+        lbVideo.pause();
+    };
+
+    const navigateLightbox = (direction) => {
+        showLightbox(currentIndex + direction);
+    };
+
+    // Bind click on each gallery item
+    galleryGrid.querySelectorAll('.gallery-item').forEach((item, idx) => {
+        item.addEventListener('click', () => {
+            // Find index among visible items at click time
+            collectVisibleItems();
+            const visibleIdx = currentItems.indexOf(item);
+            if (visibleIdx >= 0) showLightbox(visibleIdx);
+        });
+    });
+
+    if (lbClose) lbClose.addEventListener('click', closeLightbox);
+    if (lbPrev)  lbPrev.addEventListener('click', (e) => { e.stopPropagation(); navigateLightbox(-1); });
+    if (lbNext)  lbNext.addEventListener('click', (e) => { e.stopPropagation(); navigateLightbox(1); });
+
+    if (lightbox) {
+        lightbox.addEventListener('click', (e) => {
+            if (e.target === lightbox) closeLightbox();
+        });
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if (!lightbox || !lightbox.classList.contains('show')) return;
+        if (e.key === 'Escape')      closeLightbox();
+        else if (e.key === 'ArrowLeft')  navigateLightbox(-1);
+        else if (e.key === 'ArrowRight') navigateLightbox(1);
+    });
+
+    // -------- Video preview autoplay-on-hover (muted) --------
+    galleryGrid.querySelectorAll('video').forEach(vid => {
+        const parent = vid.closest('.gallery-item');
+        if (!parent) return;
+        parent.addEventListener('mouseenter', () => {
+            vid.play().catch(() => {});
+        });
+        parent.addEventListener('mouseleave', () => {
+            vid.pause();
+            vid.currentTime = 0;
+        });
+    });
+})();
 

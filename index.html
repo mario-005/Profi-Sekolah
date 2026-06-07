@@ -94,7 +94,7 @@
                 </div>
 
                 <div class="hero-img-container reveal-right">
-                    <img src="asset/IMG_20260429_070021_246 - Halel_22.jpg" alt="Siswa SDN Tunas Mekar" class="hero-img">
+                    <img src="asset/Baju_pramuka.jpg" alt="Siswa SDN Tunas Mekar" class="hero-img">
                     <div class="floating-card card-1">
                         <div class="icon-box"><i class='bx bxs-book-reader'></i></div>
                         <div>
@@ -119,8 +119,8 @@
         <section class="tentang section" id="tentang">
             <div class="tentang-container container grid">
                 <div class="tentang-images reveal-left">
-                    <img src="asset/IMG_20260417_090926_786 - Halel_22.jpg" alt="Gedung SDN Tunas Mekar" class="img-main">
-                    <img src="asset/IMG_20260429_070021_246 - Halel_22.jpg" alt="Siswa SDN Tunas Mekar" class="img-sub">
+                    <img src="asset/Upacara.jpg" alt="Gedung SDN Tunas Mekar" class="img-main">
+                    <img src="asset/Baju_pramuka.jpg" alt="Siswa SDN Tunas Mekar" class="img-sub">
                 </div>
                 
                 <div class="tentang-data reveal-right">
@@ -182,41 +182,134 @@
                 <div class="section-header text-center reveal-bottom">
                     <span class="section-subtitle">Momen Berharga</span>
                     <h2 class="section-title">Galeri & Dokumentasi</h2>
+                    <p class="section-text">Kumpulan foto dan video kegiatan pembelajaran, suasana sekolah, serta momen berharga siswa-siswi SDN Tunas Mekar.</p>
                 </div>
 
-                <!-- Google Drive Gallery Link Banner -->
-                <div class="video-container reveal-bottom" onclick="window.open('https://drive.google.com/open?id=17wRuboqO1r1jkbooBAuZSLOnFchyvenp', '_blank')">
-                    <img src="asset/IMG_20260417_090926_786 - Halel_22.jpg" alt="Dokumentasi Kegiatan SDN Tunas Mekar" class="video-thumbnail" style="object-position: center 30%;">
-                    <div class="play-btn" style="background-color: var(--primary-color); color: var(--white-color);">
-                        <i class='bx bx-link-external'></i>
-                    </div>
-                    <div class="video-overlay">
-                        <h3>Galeri Foto Dokumentasi Resmi</h3>
-                        <p>Klik di sini untuk menjelajahi album lengkap (Gedung, Kelas, Upacara, Perlombaan) di Google Drive Resmi Sekolah</p>
-                    </div>
+                <!-- Filter Tabs -->
+                <div class="gallery-filters reveal-bottom" id="galleryFilters">
+                    <button class="filter-btn active" data-filter="all"><i class='bx bx-grid-alt'></i> Semua</button>
+                    <button class="filter-btn" data-filter="photo"><i class='bx bx-image'></i> Foto</button>
+                    <button class="filter-btn" data-filter="video"><i class='bx bx-video'></i> Video</button>
                 </div>
 
                 <!-- Masonry Gallery -->
-                <div class="gallery-masonry grid mt-4">
-                    <div class="gallery-item reveal-bottom" style="transition-delay: 0.1s;" onclick="window.open('https://drive.google.com/open?id=1xfjUqGbVhzs9jzP3pWGzMKfCg_FioZct', '_blank')">
-                        <img src="asset/IMG_20260429_070021_246 - Halel_22.jpg" alt="Momen Galeri SDN Tunas Mekar">
-                        <div class="gallery-overlay"><i class='bx bx-link-external'></i></div>
+                <div class="gallery-masonry grid mt-4" id="galleryGrid">
+                    <!-- FOTO -->
+                    <div class="gallery-item reveal-bottom gallery-photo" data-type="photo" style="transition-delay: 0.05s;" data-title="Suasana Upacara Bendera">
+                        <img src="asset/Upacara.jpg" alt="Suasana Upacara Bendera" loading="lazy">
+                        <div class="gallery-overlay">
+                            <span class="gallery-tag"><i class='bx bx-image'></i> Foto</span>
+                            <i class='bx bx-search-alt-2'></i>
+                        </div>
                     </div>
-                    <div class="gallery-item reveal-bottom" style="transition-delay: 0.2s;" onclick="window.open('https://drive.google.com/open?id=17wRuboqO1r1jkbooBAuZSLOnFchyvenp', '_blank')">
-                        <img src="asset/IMG_20260417_090926_786 - Halel_22.jpg" alt="Kegiatan Siswa SDN Tunas Mekar">
-                        <div class="gallery-overlay"><i class='bx bx-link-external'></i></div>
+                    <div class="gallery-item reveal-bottom gallery-photo" data-type="photo" style="transition-delay: 0.1s;" data-title="Suasana Belajar Kelas 1">
+                        <img src="asset/Kelas 1.jpg" alt="Suasana Belajar Kelas 1" loading="lazy">
+                        <div class="gallery-overlay">
+                            <span class="gallery-tag"><i class='bx bx-image'></i> Foto</span>
+                            <i class='bx bx-search-alt-2'></i>
+                        </div>
                     </div>
-                    <div class="gallery-item reveal-bottom" style="transition-delay: 0.3s;" onclick="window.open('https://drive.google.com/open?id=1ZKKJ2YoiIe5Ty9BzygpMERj9dN-FRDPE', '_blank')">
-                        <img src="asset/logo.png" alt="Logo SDN Tunas Mekar" style="object-fit: contain; background: #fff; padding: 10px;">
-                        <div class="gallery-overlay"><i class='bx bx-link-external'></i></div>
+                    <div class="gallery-item reveal-bottom gallery-photo" data-type="photo" style="transition-delay: 0.15s;" data-title="Lorong Sekolah">
+                        <img src="asset/Lorong.jpg" alt="Lorong Sekolah" loading="lazy">
+                        <div class="gallery-overlay">
+                            <span class="gallery-tag"><i class='bx bx-image'></i> Foto</span>
+                            <i class='bx bx-search-alt-2'></i>
+                        </div>
                     </div>
-                    <div class="gallery-item reveal-bottom" style="transition-delay: 0.4s;" id="galleryKaldikLink">
-                        <img src="https://images.unsplash.com/photo-1506784983877-45594efa4cbe?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80" alt="Agenda Kalender Akademik">
-                        <div class="gallery-overlay"><i class='bx bx-link-external'></i></div>
+                    <div class="gallery-item reveal-bottom gallery-photo" data-type="photo" style="transition-delay: 0.2s;" data-title="Piala Prestasi Siswa">
+                        <img src="asset/Piala.jpg" alt="Piala Prestasi Siswa" loading="lazy">
+                        <div class="gallery-overlay">
+                            <span class="gallery-tag"><i class='bx bx-image'></i> Foto</span>
+                            <i class='bx bx-search-alt-2'></i>
+                        </div>
                     </div>
+                    <div class="gallery-item reveal-bottom gallery-photo" data-type="photo" style="transition-delay: 0.25s;" data-title="Seragam Pramuka">
+                        <img src="asset/Baju_pramuka.jpg" alt="Seragam Pramuka" loading="lazy">
+                        <div class="gallery-overlay">
+                            <span class="gallery-tag"><i class='bx bx-image'></i> Foto</span>
+                            <i class='bx bx-search-alt-2'></i>
+                        </div>
+                    </div>
+
+                    <!-- VIDEO -->
+                    <div class="gallery-item reveal-bottom gallery-video" data-type="video" style="transition-delay: 0.05s;" data-title="Video Pembelajaran Kelas 1" data-src="asset/Kelas 1.mp4">
+                        <video muted preload="metadata" playsinline>
+                            <source src="asset/Kelas 1.mp4" type="video/mp4">
+                        </video>
+                        <div class="gallery-overlay">
+                            <span class="gallery-tag"><i class='bx bx-video'></i> Video</span>
+                            <i class='bx bx-play-circle'></i>
+                        </div>
+                    </div>
+                    <div class="gallery-item reveal-bottom gallery-video" data-type="video" style="transition-delay: 0.1s;" data-title="Video Pembelajaran Kelas 2" data-src="asset/Kelas 2.mp4">
+                        <video muted preload="metadata" playsinline>
+                            <source src="asset/Kelas 2.mp4" type="video/mp4">
+                        </video>
+                        <div class="gallery-overlay">
+                            <span class="gallery-tag"><i class='bx bx-video'></i> Video</span>
+                            <i class='bx bx-play-circle'></i>
+                        </div>
+                    </div>
+                    <div class="gallery-item reveal-bottom gallery-video" data-type="video" style="transition-delay: 0.15s;" data-title="Suasana Perpustakaan" data-src="asset/Perpustakaan.mp4">
+                        <video muted preload="metadata" playsinline>
+                            <source src="asset/Perpustakaan.mp4" type="video/mp4">
+                        </video>
+                        <div class="gallery-overlay">
+                            <span class="gallery-tag"><i class='bx bx-video'></i> Video</span>
+                            <i class='bx bx-play-circle'></i>
+                        </div>
+                    </div>
+                    <div class="gallery-item reveal-bottom gallery-video" data-type="video" style="transition-delay: 0.2s;" data-title="Suasana Sekolah 1" data-src="asset/Suasana 1.mp4">
+                        <video muted preload="metadata" playsinline>
+                            <source src="asset/Suasana 1.mp4" type="video/mp4">
+                        </video>
+                        <div class="gallery-overlay">
+                            <span class="gallery-tag"><i class='bx bx-video'></i> Video</span>
+                            <i class='bx bx-play-circle'></i>
+                        </div>
+                    </div>
+                    <div class="gallery-item reveal-bottom gallery-video" data-type="video" style="transition-delay: 0.25s;" data-title="Suasana Sekolah 2" data-src="asset/Suasana 2.mp4">
+                        <video muted preload="metadata" playsinline>
+                            <source src="asset/Suasana 2.mp4" type="video/mp4">
+                        </video>
+                        <div class="gallery-overlay">
+                            <span class="gallery-tag"><i class='bx bx-video'></i> Video</span>
+                            <i class='bx bx-play-circle'></i>
+                        </div>
+                    </div>
+                    <div class="gallery-item reveal-bottom gallery-video" data-type="video" style="transition-delay: 0.3s;" data-title="Suasana Sekolah 3" data-src="asset/Suasana 3.mp4">
+                        <video muted preload="metadata" playsinline>
+                            <source src="asset/Suasana 3.mp4" type="video/mp4">
+                        </video>
+                        <div class="gallery-overlay">
+                            <span class="gallery-tag"><i class='bx bx-video'></i> Video</span>
+                            <i class='bx bx-play-circle'></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Empty state (shown by JS when filter has no result) -->
+                <div class="gallery-empty hidden" id="galleryEmpty">
+                    <i class='bx bx-folder-open'></i>
+                    <p>Tidak ada item pada kategori ini.</p>
                 </div>
             </div>
         </section>
+
+        <!-- Lightbox Modal -->
+        <div class="lightbox-overlay" id="lightbox">
+            <button class="lightbox-close" id="lightboxClose" aria-label="Tutup"><i class='bx bx-x'></i></button>
+            <button class="lightbox-prev" id="lightboxPrev" aria-label="Sebelumnya"><i class='bx bx-chevron-left'></i></button>
+            <button class="lightbox-next" id="lightboxNext" aria-label="Selanjutnya"><i class='bx bx-chevron-right'></i></button>
+            <div class="lightbox-content">
+                <img id="lightboxImg" alt="" class="hidden">
+                <video id="lightboxVideo" controls playsinline class="hidden"></video>
+            </div>
+            <div class="lightbox-caption">
+                <span id="lightboxTitle"></span>
+                <span id="lightboxCounter"></span>
+            </div>
+        </div>
 
         <!-- Berita & FAQ Section -->
         <section class="informasi section" id="berita">
@@ -931,6 +1024,6 @@
     </a>
 
     <!-- JavaScript -->
-    <script src="script.js?v=2"></script>
+    <script src="script.js?v=3"></script>
 </body>
 </html>
