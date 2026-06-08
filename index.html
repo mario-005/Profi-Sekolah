@@ -809,10 +809,12 @@
             <!-- Tabs -->
             <div class="admin-db-tabs">
                 <button class="admin-tab-btn active" onclick="switchAdminTab('tab-aspirasi')"><i class='bx bx-chat'></i> Kelola Aspirasi</button>
+                <button class="admin-tab-btn" onclick="switchAdminTab('tab-ppdb')"><i class='bx bxs-graduation'></i> Kelola PPDB</button>
                 <button class="admin-tab-btn" onclick="switchAdminTab('tab-berita')"><i class='bx bx-news'></i> Kelola Berita</button>
                 <button class="admin-tab-btn" onclick="switchAdminTab('tab-faq')"><i class='bx bx-help-circle'></i> Kelola FAQ</button>
                 <button class="admin-tab-btn" onclick="switchAdminTab('tab-poster')"><i class='bx bx-carousel'></i> Poster Daftar</button>
                 <button class="admin-tab-btn" onclick="switchAdminTab('tab-galeri')"><i class='bx bx-images'></i> Kelola Galeri</button>
+                <button class="admin-tab-btn" onclick="switchAdminTab('tab-konten')"><i class='bx bx-edit'></i> Konten Website</button>
                 <button class="admin-tab-btn" onclick="switchAdminTab('tab-info')"><i class='bx bx-cog'></i> Statistik & Info Sekolah</button>
             </div>
             
@@ -845,7 +847,35 @@
                     </div>
                 </div>
                 
-                <!-- Panel 2: Berita -->
+                <!-- Panel 2: PPDB -->
+                <div class="admin-panel-content" id="tab-ppdb">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+                        <h4 style="font-size: 15px; color: var(--title-color); font-weight: 600;">Daftar Pendaftar PPDB Online</h4>
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                            <button class="admin-btn admin-btn-secondary" onclick="exportPPDBData()"><i class='bx bx-copy'></i> Salin Data</button>
+                            <button class="admin-btn admin-btn-secondary" onclick="resetPPDBDemo()"><i class='bx bx-refresh'></i> Muat Ulang Demo</button>
+                        </div>
+                    </div>
+                    <div class="admin-table-wrapper">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Calon Siswa</th>
+                                    <th>Orang Tua / Kontak</th>
+                                    <th>Jalur & Berkas</th>
+                                    <th>Status</th>
+                                    <th>Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="adminPPDBTableBody">
+                                <!-- Data diisi via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Panel 3: Berita -->
                 <div class="admin-panel-content" id="tab-berita">
                     <!-- Form Tambah Berita -->
                     <div class="admin-form-box">
@@ -1029,7 +1059,7 @@
                                 </div>
                             </div>
                             <div class="admin-form-group">
-                                <label>Unggah Berkas (Otomatis ke Supabase Storage jika dikonfigurasi)</label>
+                                <label>Unggah Berkas ke Supabase Storage</label>
                                 <div class="file-upload-zone" id="zoneFileGaleri">
                                     <i class='bx bx-cloud-upload upload-icon'></i>
                                     <span class="upload-title">Klik / seret file ke sini</span>
@@ -1073,6 +1103,296 @@
                             </tbody>
                         </table>
                     </div>
+                </div>
+
+                <!-- Panel 6: Konten Website -->
+                <div class="admin-panel-content" id="tab-konten">
+                    <form id="adminContentForm" class="admin-form">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+                            <h4 style="font-size: 15px; color: var(--title-color); font-weight: 600;">Ubah Konten Teks Halaman Utama</h4>
+                            <button type="button" class="admin-btn admin-btn-secondary" onclick="resetWebsiteContent()"><i class='bx bx-refresh'></i> Pulihkan Konten Bawaan</button>
+                        </div>
+
+                        <div class="admin-form-box">
+                            <h4 class="admin-form-title"><i class='bx bx-home-alt'></i> Hero Beranda</h4>
+                            <div class="admin-form-group">
+                                <label for="contentSiteName">Nama Sekolah / Brand</label>
+                                <input type="text" id="contentSiteName" class="admin-input-txt" required>
+                            </div>
+                            <div class="admin-form-group" style="margin-top: 10px;">
+                                <label for="contentHeroBadge">Badge Hero</label>
+                                <input type="text" id="contentHeroBadge" class="admin-input-txt" required>
+                            </div>
+                            <div class="admin-form-row-2" style="margin-top: 10px;">
+                                <div class="admin-form-group">
+                                    <label for="contentHeroTitleBefore">Judul Awal</label>
+                                    <input type="text" id="contentHeroTitleBefore" class="admin-input-txt" required>
+                                </div>
+                                <div class="admin-form-group">
+                                    <label for="contentHeroHighlight1">Sorotan 1</label>
+                                    <input type="text" id="contentHeroHighlight1" class="admin-input-txt" required>
+                                </div>
+                            </div>
+                            <div class="admin-form-row-2" style="margin-top: 10px;">
+                                <div class="admin-form-group">
+                                    <label for="contentHeroTitleMiddle">Teks Tengah</label>
+                                    <input type="text" id="contentHeroTitleMiddle" class="admin-input-txt">
+                                </div>
+                                <div class="admin-form-group">
+                                    <label for="contentHeroHighlight2">Sorotan 2</label>
+                                    <input type="text" id="contentHeroHighlight2" class="admin-input-txt" required>
+                                </div>
+                            </div>
+                            <div class="admin-form-group" style="margin-top: 10px;">
+                                <label for="contentHeroDescription">Deskripsi Hero</label>
+                                <textarea id="contentHeroDescription" class="admin-input-txt" rows="3" required></textarea>
+                            </div>
+                            <div class="admin-form-row-2" style="margin-top: 10px;">
+                                <div class="admin-form-group">
+                                    <label for="contentHeroPrimary">Teks Tombol Utama</label>
+                                    <input type="text" id="contentHeroPrimary" class="admin-input-txt" required>
+                                </div>
+                                <div class="admin-form-group">
+                                    <label for="contentHeroSecondary">Teks Tombol Kedua</label>
+                                    <input type="text" id="contentHeroSecondary" class="admin-input-txt" required>
+                                </div>
+                            </div>
+                            <div class="admin-form-row-2" style="margin-top: 10px;">
+                                <div class="admin-form-group">
+                                    <label for="contentHeroCard1Title">Kartu Mengambang 1</label>
+                                    <input type="text" id="contentHeroCard1Title" class="admin-input-txt" required>
+                                </div>
+                                <div class="admin-form-group">
+                                    <label for="contentHeroCard1Desc">Deskripsi Kartu 1</label>
+                                    <input type="text" id="contentHeroCard1Desc" class="admin-input-txt" required>
+                                </div>
+                            </div>
+                            <div class="admin-form-row-2" style="margin-top: 10px;">
+                                <div class="admin-form-group">
+                                    <label for="contentHeroCard2Title">Kartu Mengambang 2</label>
+                                    <input type="text" id="contentHeroCard2Title" class="admin-input-txt" required>
+                                </div>
+                                <div class="admin-form-group">
+                                    <label for="contentHeroCard2Desc">Deskripsi Kartu 2</label>
+                                    <input type="text" id="contentHeroCard2Desc" class="admin-input-txt" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="admin-form-box">
+                            <h4 class="admin-form-title"><i class='bx bx-info-circle'></i> Tentang Sekolah</h4>
+                            <div class="admin-form-row-2">
+                                <div class="admin-form-group">
+                                    <label for="contentAboutSubtitle">Subjudul</label>
+                                    <input type="text" id="contentAboutSubtitle" class="admin-input-txt" required>
+                                </div>
+                                <div class="admin-form-group">
+                                    <label for="contentAboutTitle">Judul</label>
+                                    <input type="text" id="contentAboutTitle" class="admin-input-txt" required>
+                                </div>
+                            </div>
+                            <div class="admin-form-group" style="margin-top: 10px;">
+                                <label for="contentAboutAccent">Kata Sorotan Judul</label>
+                                <input type="text" id="contentAboutAccent" class="admin-input-txt" required>
+                            </div>
+                            <div class="admin-form-group" style="margin-top: 10px;">
+                                <label for="contentAboutP1">Paragraf 1</label>
+                                <textarea id="contentAboutP1" class="admin-input-txt" rows="3" required></textarea>
+                            </div>
+                            <div class="admin-form-group" style="margin-top: 10px;">
+                                <label for="contentAboutP2">Paragraf 2 (gunakan {kepsek} untuk nama kepala sekolah)</label>
+                                <textarea id="contentAboutP2" class="admin-input-txt" rows="3" required></textarea>
+                            </div>
+                            <div class="admin-form-group" style="margin-top: 10px;">
+                                <label for="contentAboutList">Poin Profil (satu baris untuk satu poin)</label>
+                                <textarea id="contentAboutList" class="admin-input-txt" rows="4" required></textarea>
+                            </div>
+                        </div>
+
+                        <div class="admin-form-box">
+                            <h4 class="admin-form-title"><i class='bx bx-grid-alt'></i> Program, Galeri, Berita, Aspirasi</h4>
+                            <div class="admin-form-row-2">
+                                <div class="admin-form-group">
+                                    <label for="contentProgramSubtitle">Subjudul Program</label>
+                                    <input type="text" id="contentProgramSubtitle" class="admin-input-txt" required>
+                                </div>
+                                <div class="admin-form-group">
+                                    <label for="contentProgramTitle">Judul Program</label>
+                                    <input type="text" id="contentProgramTitle" class="admin-input-txt" required>
+                                </div>
+                            </div>
+                            <div class="admin-form-group" style="margin-top: 10px;">
+                                <label for="contentProgramText">Deskripsi Program</label>
+                                <textarea id="contentProgramText" class="admin-input-txt" rows="2" required></textarea>
+                            </div>
+                            <div class="admin-form-row-2" style="margin-top: 10px;">
+                                <div class="admin-form-group">
+                                    <label for="contentProgramCard1Title">Program 1 - Judul</label>
+                                    <input type="text" id="contentProgramCard1Title" class="admin-input-txt" required>
+                                </div>
+                                <div class="admin-form-group">
+                                    <label for="contentProgramCard1Link">Program 1 - Label Link</label>
+                                    <input type="text" id="contentProgramCard1Link" class="admin-input-txt" required>
+                                </div>
+                            </div>
+                            <div class="admin-form-group" style="margin-top: 10px;">
+                                <label for="contentProgramCard1Desc">Program 1 - Deskripsi</label>
+                                <textarea id="contentProgramCard1Desc" class="admin-input-txt" rows="2" required></textarea>
+                            </div>
+                            <div class="admin-form-row-2" style="margin-top: 10px;">
+                                <div class="admin-form-group">
+                                    <label for="contentProgramCard2Title">Program 2 - Judul</label>
+                                    <input type="text" id="contentProgramCard2Title" class="admin-input-txt" required>
+                                </div>
+                                <div class="admin-form-group">
+                                    <label for="contentProgramCard2Link">Program 2 - Label Link</label>
+                                    <input type="text" id="contentProgramCard2Link" class="admin-input-txt" required>
+                                </div>
+                            </div>
+                            <div class="admin-form-group" style="margin-top: 10px;">
+                                <label for="contentProgramCard2Desc">Program 2 - Deskripsi</label>
+                                <textarea id="contentProgramCard2Desc" class="admin-input-txt" rows="2" required></textarea>
+                            </div>
+                            <div class="admin-form-row-2" style="margin-top: 10px;">
+                                <div class="admin-form-group">
+                                    <label for="contentProgramCard3Title">Program 3 - Judul</label>
+                                    <input type="text" id="contentProgramCard3Title" class="admin-input-txt" required>
+                                </div>
+                                <div class="admin-form-group">
+                                    <label for="contentProgramCard3Link">Program 3 - Label Link</label>
+                                    <input type="text" id="contentProgramCard3Link" class="admin-input-txt" required>
+                                </div>
+                            </div>
+                            <div class="admin-form-group" style="margin-top: 10px;">
+                                <label for="contentProgramCard3Desc">Program 3 - Deskripsi</label>
+                                <textarea id="contentProgramCard3Desc" class="admin-input-txt" rows="2" required></textarea>
+                            </div>
+                            <div class="admin-form-row-2" style="margin-top: 14px;">
+                                <div class="admin-form-group">
+                                    <label for="contentGalleryTitle">Judul Galeri</label>
+                                    <input type="text" id="contentGalleryTitle" class="admin-input-txt" required>
+                                </div>
+                                <div class="admin-form-group">
+                                    <label for="contentAspirasiTitle">Judul Aspirasi</label>
+                                    <input type="text" id="contentAspirasiTitle" class="admin-input-txt" required>
+                                </div>
+                            </div>
+                            <div class="admin-form-row-2" style="margin-top: 10px;">
+                                <div class="admin-form-group">
+                                    <label for="contentGallerySubtitle">Subjudul Galeri</label>
+                                    <input type="text" id="contentGallerySubtitle" class="admin-input-txt" required>
+                                </div>
+                                <div class="admin-form-group">
+                                    <label for="contentAspirasiSubtitle">Subjudul Aspirasi</label>
+                                    <input type="text" id="contentAspirasiSubtitle" class="admin-input-txt" required>
+                                </div>
+                            </div>
+                            <div class="admin-form-row-2" style="margin-top: 10px;">
+                                <div class="admin-form-group">
+                                    <label for="contentGalleryText">Deskripsi Galeri</label>
+                                    <textarea id="contentGalleryText" class="admin-input-txt" rows="2" required></textarea>
+                                </div>
+                                <div class="admin-form-group">
+                                    <label for="contentAspirasiText">Deskripsi Aspirasi</label>
+                                    <textarea id="contentAspirasiText" class="admin-input-txt" rows="2" required></textarea>
+                                </div>
+                            </div>
+                            <div class="admin-form-row-2" style="margin-top: 10px;">
+                                <div class="admin-form-group">
+                                    <label for="contentNewsTitle">Judul Berita</label>
+                                    <input type="text" id="contentNewsTitle" class="admin-input-txt" required>
+                                </div>
+                                <div class="admin-form-group">
+                                    <label for="contentFaqTitle">Judul FAQ</label>
+                                    <input type="text" id="contentFaqTitle" class="admin-input-txt" required>
+                                </div>
+                            </div>
+                            <div class="admin-form-row-2" style="margin-top: 10px;">
+                                <div class="admin-form-group">
+                                    <label for="contentNewsSubtitle">Subjudul Berita</label>
+                                    <input type="text" id="contentNewsSubtitle" class="admin-input-txt" required>
+                                </div>
+                                <div class="admin-form-group">
+                                    <label for="contentFaqSubtitle">Subjudul FAQ</label>
+                                    <input type="text" id="contentFaqSubtitle" class="admin-input-txt" required>
+                                </div>
+                            </div>
+                            <div class="admin-form-row-2" style="margin-top: 10px;">
+                                <div class="admin-form-group">
+                                    <label for="contentAspirasiFormTitle">Judul Kartu Form Aspirasi</label>
+                                    <input type="text" id="contentAspirasiFormTitle" class="admin-input-txt" required>
+                                </div>
+                                <div class="admin-form-group">
+                                    <label for="contentAspirasiTrackerTitle">Judul Kartu Lacak Aspirasi</label>
+                                    <input type="text" id="contentAspirasiTrackerTitle" class="admin-input-txt" required>
+                                </div>
+                            </div>
+                            <div class="admin-form-row-2" style="margin-top: 10px;">
+                                <div class="admin-form-group">
+                                    <label for="contentAspirasiTrackerDesc">Deskripsi Lacak Aspirasi</label>
+                                    <textarea id="contentAspirasiTrackerDesc" class="admin-input-txt" rows="2" required></textarea>
+                                </div>
+                                <div class="admin-form-group">
+                                    <label for="contentAspirasiRecentTitle">Judul Aspirasi Terbaru</label>
+                                    <input type="text" id="contentAspirasiRecentTitle" class="admin-input-txt" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="admin-form-box">
+                            <h4 class="admin-form-title"><i class='bx bx-layout'></i> Footer & Modal PPDB</h4>
+                            <div class="admin-form-group">
+                                <label for="contentFooterDescription">Deskripsi Footer</label>
+                                <textarea id="contentFooterDescription" class="admin-input-txt" rows="2" required></textarea>
+                            </div>
+                            <div class="admin-form-group" style="margin-top: 10px;">
+                                <label for="contentFooterAddress">Alamat Sekolah</label>
+                                <textarea id="contentFooterAddress" class="admin-input-txt" rows="2" required></textarea>
+                            </div>
+                            <div class="admin-form-row-2" style="margin-top: 10px;">
+                                <div class="admin-form-group">
+                                    <label for="contentFooterNpsn">NPSN</label>
+                                    <input type="text" id="contentFooterNpsn" class="admin-input-txt" required>
+                                </div>
+                                <div class="admin-form-group">
+                                    <label for="contentFooterHoursTime">Jam Operasional</label>
+                                    <input type="text" id="contentFooterHoursTime" class="admin-input-txt" required>
+                                </div>
+                            </div>
+                            <div class="admin-form-row-2" style="margin-top: 10px;">
+                                <div class="admin-form-group">
+                                    <label for="contentFooterHoursTitle">Judul Jam Operasional</label>
+                                    <input type="text" id="contentFooterHoursTitle" class="admin-input-txt" required>
+                                </div>
+                                <div class="admin-form-group">
+                                    <label for="contentFooterHoursText">Keterangan Jam</label>
+                                    <input type="text" id="contentFooterHoursText" class="admin-input-txt" required>
+                                </div>
+                            </div>
+                            <div class="admin-form-group" style="margin-top: 10px;">
+                                <label for="contentFooterCopyright">Teks Copyright</label>
+                                <input type="text" id="contentFooterCopyright" class="admin-input-txt" required>
+                            </div>
+                            <div class="admin-form-row-2" style="margin-top: 14px;">
+                                <div class="admin-form-group">
+                                    <label for="contentPpdbTitle">Judul Modal PPDB</label>
+                                    <input type="text" id="contentPpdbTitle" class="admin-input-txt" required>
+                                </div>
+                                <div class="admin-form-group">
+                                    <label for="contentPpdbToggle">Teks Toggle Syarat PPDB</label>
+                                    <input type="text" id="contentPpdbToggle" class="admin-input-txt" required>
+                                </div>
+                            </div>
+                            <div class="admin-form-group" style="margin-top: 10px;">
+                                <label for="contentPpdbInstruction">Instruksi Form PPDB</label>
+                                <textarea id="contentPpdbInstruction" class="admin-input-txt" rows="2" required></textarea>
+                            </div>
+                        </div>
+
+                        <div style="display: flex; gap: 15px; justify-content: flex-end;">
+                            <button type="submit" class="admin-btn admin-btn-primary"><i class='bx bx-save'></i> Simpan Konten Website</button>
+                        </div>
+                    </form>
                 </div>
 
                 <!-- Panel 6: Statistik & Info -->
@@ -1122,7 +1442,24 @@
                             </div>
                             <div class="admin-form-group" style="margin-top: 10px;">
                                 <label for="dbInfoKaldikUrl">Tautan / File Kalender Akademik Resmi</label>
-                                <input type="text" id="dbInfoKaldikUrl" class="admin-input-txt" required placeholder="Contoh: asset/KALDIK 2025-2026.pdf atau link Google Drive...">
+                                <input type="text" id="dbInfoKaldikUrl" class="admin-input-txt" required placeholder="URL Supabase / path PDF kalender akademik">
+                            </div>
+                            <div class="admin-form-group" style="margin-top: 10px;">
+                                <label>Upload PDF Kalender Akademik ke Supabase</label>
+                                <div class="file-upload-zone" id="zoneFileKaldik">
+                                    <i class='bx bx-cloud-upload upload-icon'></i>
+                                    <span class="upload-title">Klik / seret PDF kalender akademik</span>
+                                    <span class="upload-subtitle">PDF (maks. 10MB)</span>
+                                    <input type="file" id="fileKaldik" accept="application/pdf" style="display: none;">
+                                    <div class="file-preview-card" id="previewFileKaldik" style="display: none;">
+                                        <i class='bx bxs-file-pdf file-icon' style="color:#ef4444;"></i>
+                                        <div class="file-info">
+                                            <span class="file-name" id="nameFileKaldik">kaldik.pdf</span>
+                                            <span class="file-size" id="sizeFileKaldik">0 KB</span>
+                                        </div>
+                                        <button type="button" class="btn-remove-file" id="removeFileKaldik"><i class='bx bx-x'></i></button>
+                                    </div>
+                                </div>
                             </div>
                             <div class="admin-form-row-2" style="margin-top: 10px;">
                                 <div class="admin-form-group">
@@ -1209,37 +1546,6 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="admin-form-group" style="margin-top: 10px;">
-                                <label for="dbInfoGasUrl" style="color:#10b981; font-weight:700;"><i class='bx bxl-google-drive' style="color:#34a853; font-size:14px; margin-right:2px; vertical-align:middle;"></i> URL Google Apps Script Upload (Unggah Dokumen PPDB)</label>
-                                <input type="text" id="dbInfoGasUrl" class="admin-input-txt" placeholder="Tempelkan URL Web App hasil deploy Google Apps Script Anda...">
-                            </div>
-                        </div>
-
-                        <!-- Box Supabase Storage -->
-                        <div class="admin-form-box">
-                            <h4 class="admin-form-title" style="color:#3ecf8e;"><i class='bx bxs-cloud' style="color:#3ecf8e;"></i> Konfigurasi Supabase Storage (Upload Galeri)</h4>
-                            <p style="font-size: 12px; color: var(--text-color); margin-bottom: 15px; line-height: 1.5;">
-                                Supabase digunakan untuk menyimpan foto &amp; video galeri. Buat bucket <strong>public</strong> di Supabase Storage, lalu tempel Project URL dan Anon Key di bawah.
-                            </p>
-                            <div class="admin-form-row-2">
-                                <div class="admin-form-group">
-                                    <label for="dbSupabaseUrl">Supabase Project URL</label>
-                                    <input type="text" id="dbSupabaseUrl" class="admin-input-txt" placeholder="https://eyudbincbrjxanhlvlyl.supabase.co">
-                                </div>
-                                <div class="admin-form-group">
-                                    <label for="dbSupabaseKey">Supabase Anon / Publishable Key</label>
-                                    <input type="text" id="dbSupabaseKey" class="admin-input-txt" placeholder="sb_publishable_... atau eyJ...">
-                                </div>
-                            </div>
-                            <div class="admin-form-group" style="margin-top: 10px;">
-                                <label for="dbSupabaseBucket">Nama Storage Bucket (harus Public)</label>
-                                <input type="text" id="dbSupabaseBucket" class="admin-input-txt" placeholder="gallery" value="gallery">
-                            </div>
-                            <div style="display: flex; gap: 10px; margin-top: 12px; align-items: center; flex-wrap: wrap;">
-                                <button type="button" class="admin-btn admin-btn-secondary" onclick="testSupabaseFromAdmin()"><i class='bx bx-wifi'></i> Tes Koneksi</button>
-                                <small style="color: var(--text-color); font-size: 12px;">Tes apakah URL/Key valid dan bucket dapat diakses publik.</small>
-                            </div>
-                            <div id="supabaseStatus" style="margin-top: 12px; padding: 10px 14px; border-radius: 8px; font-size: 12px; font-weight: 500; display: none;"></div>
                         </div>
                         
                         <!-- Aksi Form -->
@@ -1259,9 +1565,9 @@
     <div class="upload-progress-overlay" id="uploadProgressOverlay">
         <div class="upload-progress-card">
             <div class="upload-progress-icon">
-                <i class='bx bxl-google-drive'></i>
+                <i class='bx bxs-cloud-upload'></i>
             </div>
-            <h4 class="upload-progress-title">Mengunggah ke Google Drive</h4>
+            <h4 class="upload-progress-title">Mengunggah ke Supabase</h4>
             <p class="upload-progress-status" id="uploadProgressStatus">Menyiapkan berkas dokumen pendaftaran...</p>
             <div class="upload-progress-bar-container">
                 <div class="upload-progress-bar-active" id="uploadProgressBar"></div>

@@ -697,11 +697,41 @@ async function uploadFileToGAS(gasUrl, file, onProgress) {
 // =========================================
 // HELPER: Upload file to Supabase Storage
 // =========================================
+function readFileAsDataUrl(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+}
+
+function validatePublicImageUrl(url) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        const timer = setTimeout(() => {
+            img.onload = null;
+            img.onerror = null;
+            reject(new Error('Timeout saat memeriksa URL gambar publik.'));
+        }, 8000);
+
+        img.onload = () => {
+            clearTimeout(timer);
+            resolve(true);
+        };
+        img.onerror = () => {
+            clearTimeout(timer);
+            reject(new Error('URL gambar tidak dapat dibuka publik.'));
+        };
+        img.src = url;
+    });
+}
+
 function getSupabaseConfig() {
     return {
-        url:    (localStorage.getItem(L_KEY_SUPABASE_URL) || '').trim().replace(/\/+$/, ''),
-        key:    (localStorage.getItem(L_KEY_SUPABASE_KEY) || '').trim(),
-        bucket: (localStorage.getItem(L_KEY_SUPABASE_BUCKET) || 'gallery').trim() || 'gallery'
+        url:    (localStorage.getItem(L_KEY_SUPABASE_URL) || DEFAULT_SUPABASE_CONFIG.url || '').trim().replace(/\/+$/, ''),
+        key:    (localStorage.getItem(L_KEY_SUPABASE_KEY) || DEFAULT_SUPABASE_CONFIG.key || '').trim(),
+        bucket: (localStorage.getItem(L_KEY_SUPABASE_BUCKET) || DEFAULT_SUPABASE_CONFIG.bucket || 'gallery').trim() || 'gallery'
     };
 }
 
@@ -717,15 +747,18 @@ async function uploadFileToSupabase(file, onProgress) {
 
     const cfg = getSupabaseConfig();
     if (!cfg.url || !cfg.key) {
-        throw new Error('Supabase URL / Key belum dikonfigurasi di admin panel (tab Statistik & Info Sekolah).');
+        throw new Error('Supabase belum siap. Isi DEFAULT_SUPABASE_CONFIG.key di script.js dengan Anon / Publishable Key Supabase.');
     }
 
     const supabase = window.supabase.createClient(cfg.url, cfg.key);
 
-    // Tentukan folder & nama file unik
-    const isVideo = (file.type || '').startsWith('video');
-    const folder  = isVideo ? 'videos' : 'photos';
-    const ext     = (file.name.split('.').pop() || (isVideo ? 'mp4' : 'jpg')).toLowerCase();
+    // Tentukan folder & nama file unik berdasarkan tipe file.
+    const mime = file.type || '';
+    const isVideo = mime.startsWith('video');
+    const isImage = mime.startsWith('image');
+    const isPdf = mime === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+    const folder  = isVideo ? 'videos' : (isImage ? 'photos' : (isPdf ? 'documents' : 'files'));
+    const ext     = (file.name.split('.').pop() || (isVideo ? 'mp4' : (isPdf ? 'pdf' : 'jpg'))).toLowerCase();
     const rand    = Math.random().toString(36).substring(2, 8);
     const cleanName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_').replace(/\.[^.]+$/, '');
     const path    = `${folder}/${Date.now()}-${rand}-${cleanName}.${ext}`;
@@ -738,7 +771,7 @@ async function uploadFileToSupabase(file, onProgress) {
                 .upload(path, file, {
                     cacheControl: '3600',
                     upsert: false,
-                    contentType: file.type || 'application/octet-stream'
+                    contentType: mime || 'application/octet-stream'
                 });
 
             if (error) {
@@ -750,6 +783,15 @@ async function uploadFileToSupabase(file, onProgress) {
             const { data: pubData } = supabase.storage
                 .from(cfg.bucket)
                 .getPublicUrl(data.path);
+
+            if (isImage && pubData.publicUrl) {
+                try {
+                    await validatePublicImageUrl(pubData.publicUrl);
+                } catch (visibilityErr) {
+                    reject(new Error('File berhasil diunggah, tetapi URL publik gambarnya tidak bisa dibuka. Pastikan bucket Supabase bersifat Public dan policy SELECT untuk anon sudah aktif.'));
+                    return;
+                }
+            }
 
             if (onProgress) onProgress(100);
             resolve(pubData.publicUrl);
@@ -890,7 +932,7 @@ function showGaleriFallbackPrompt(messageHTML) {
                 <div class="custom-alert-message">${messageHTML}</div>
                 <div style="display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; justify-content: center;">
                     <button class="custom-alert-btn custom-alert-btn-secondary" data-action="cancel">Batal</button>
-                    <button class="custom-alert-btn" data-action="fallback" style="background: #f59e0b;">Simpan sebagai Path Lokal (asset/)</button>
+                    <button class="custom-alert-btn" data-action="fallback" style="background: #f59e0b;">Tampilkan Foto Secara Lokal</button>
                 </div>
             </div>
         `;
@@ -1051,35 +1093,35 @@ function bindFormSubmit() {
             btnSubmit.style.opacity = '0.8';
             btnSubmit.disabled = true;
 
-            // 7. Upload files to Google Drive via GAS (if URL configured)
-            const gasUrl = localStorage.getItem(L_KEY_GAS_URL) || '';
+            // 7. Upload files to Supabase Storage
+            const useSupabaseUpload = true;
             let fileFotoUrl  = 'foto_default.jpg';
             let fileKKUrl    = 'kk_default.pdf';
             let fileAktaUrl  = 'akta_default.pdf';
             let fileKIAUrl   = '';
 
-            if (gasUrl) {
+            if (useSupabaseUpload) {
                 try {
                     const totalFiles = [selectedFiles.FileFoto, selectedFiles.FileKK, selectedFiles.FileAkta, selectedFiles.FileKIA].filter(Boolean).length;
                     let uploadedCount = 0;
 
                     // Upload Pas Foto
                     showUploadOverlay(`Mengunggah Pas Foto Siswa... (1/${totalFiles})`, Math.round((uploadedCount / (totalFiles * 2)) * 100));
-                    fileFotoUrl = await uploadFileToGAS(gasUrl, selectedFiles.FileFoto, (pct) => {
+                    fileFotoUrl = await uploadFileToSupabase(selectedFiles.FileFoto, (pct) => {
                         showUploadOverlay(`Mengunggah Pas Foto Siswa... (1/${totalFiles})`, Math.round(((uploadedCount + pct / 100) / totalFiles) * 100));
                     });
                     uploadedCount++;
 
                     // Upload KK
                     showUploadOverlay(`Mengunggah Kartu Keluarga (KK)... (2/${totalFiles})`, Math.round((uploadedCount / totalFiles) * 100));
-                    fileKKUrl = await uploadFileToGAS(gasUrl, selectedFiles.FileKK, (pct) => {
+                    fileKKUrl = await uploadFileToSupabase(selectedFiles.FileKK, (pct) => {
                         showUploadOverlay(`Mengunggah Kartu Keluarga (KK)... (2/${totalFiles})`, Math.round(((uploadedCount + pct / 100) / totalFiles) * 100));
                     });
                     uploadedCount++;
 
                     // Upload Akta
                     showUploadOverlay(`Mengunggah Akta Kelahiran... (3/${totalFiles})`, Math.round((uploadedCount / totalFiles) * 100));
-                    fileAktaUrl = await uploadFileToGAS(gasUrl, selectedFiles.FileAkta, (pct) => {
+                    fileAktaUrl = await uploadFileToSupabase(selectedFiles.FileAkta, (pct) => {
                         showUploadOverlay(`Mengunggah Akta Kelahiran... (3/${totalFiles})`, Math.round(((uploadedCount + pct / 100) / totalFiles) * 100));
                     });
                     uploadedCount++;
@@ -1087,7 +1129,7 @@ function bindFormSubmit() {
                     // Upload KIA (optional)
                     if (selectedFiles.FileKIA) {
                         showUploadOverlay(`Mengunggah Kartu Identitas Anak (KIA)... (${totalFiles}/${totalFiles})`, Math.round((uploadedCount / totalFiles) * 100));
-                        fileKIAUrl = await uploadFileToGAS(gasUrl, selectedFiles.FileKIA, (pct) => {
+                        fileKIAUrl = await uploadFileToSupabase(selectedFiles.FileKIA, (pct) => {
                             showUploadOverlay(`Mengunggah KIA... (${totalFiles}/${totalFiles})`, Math.round(((uploadedCount + pct / 100) / totalFiles) * 100));
                         });
                         uploadedCount++;
@@ -1100,7 +1142,7 @@ function bindFormSubmit() {
                     btnSubmit.innerHTML = originalText;
                     btnSubmit.disabled = false;
                     btnSubmit.style.opacity = '1';
-                    showCustomAlert("Gagal Mengunggah Berkas", `Terjadi kesalahan saat mengunggah berkas ke Google Drive: <strong>${uploadErr.message}</strong>. Pastikan URL Google Apps Script sudah dikonfigurasi dengan benar di Admin Panel.`, "error");
+                    showCustomAlert("Gagal Mengunggah Berkas", `Terjadi kesalahan saat mengunggah berkas ke Supabase: <strong>${uploadErr.message}</strong>. Pastikan bucket Supabase public dan policy upload sudah benar.`, "error");
                     return;
                 }
             } else {
@@ -1278,9 +1320,16 @@ const L_KEY_PROFILE_SUB_IMAGE = 'sdn_tunas_profile_sub_image';
 const L_KEY_GAS_URL = 'sdn_tunas_gas_url';
 const L_KEY_GALERI = 'sdn_tunas_galeri';
 const L_KEY_POSTERS = 'sdn_tunas_registration_posters';
+const L_KEY_CONTENT = 'sdn_tunas_website_content';
 const L_KEY_SUPABASE_URL = 'sdn_tunas_supabase_url';
 const L_KEY_SUPABASE_KEY = 'sdn_tunas_supabase_key';
 const L_KEY_SUPABASE_BUCKET = 'sdn_tunas_supabase_bucket';
+
+const DEFAULT_SUPABASE_CONFIG = {
+    url: 'https://eyudbincbrjxanhlvlyl.supabase.co',
+    key: ' sb_publishable_6Khf-SEG6B9WA86tpFHBsA_DXj9Im0n',
+    bucket: 'gallery'
+};
 
 let selectedFiles = {
     FileFoto: null,
@@ -1291,7 +1340,8 @@ let selectedFiles = {
     FilePoster: null,
     FileHeroImage: null,
     FileProfileImage: null,
-    FileProfileSubImage: null
+    FileProfileSubImage: null,
+    FileKaldik: null
 };
 
 // Data Default Bawaan (Hasil Survei Riil)
@@ -1401,6 +1451,95 @@ const defaultRegistrationPosters = [
     { id: 'POSTER-5', title: 'Poster Pendaftaran 5', src: 'asset/Poster Pendaftaran 5.png' }
 ];
 
+const defaultWebsiteContent = {
+    siteName: "SDN Tunas Mekar",
+    hero: {
+        badge: "Sekolah Dasar Baik Sekali (Terakreditasi B)",
+        titleBefore: "Membangun Generasi",
+        highlight1: "Cerdas",
+        titleMiddle: "dan",
+        highlight2: "Berkarakter",
+        description: "Selamat datang di SDN Tunas Mekar. Kami berkomitmen untuk memberikan pendidikan terbaik dengan lingkungan belajar yang inspiratif, inovatif, dan berlandaskan nilai-nilai karakter bangsa.",
+        primaryButton: "Daftar Sekarang",
+        secondaryButton: "Jelajahi Sekolah",
+        card1Title: "Kurikulum Merdeka",
+        card1Desc: "Sesuai Standar Nasional",
+        card2Title: "Akreditasi B",
+        card2Desc: "Resmi Kemendikdasmen"
+    },
+    about: {
+        subtitle: "Profil Resmi Sekolah",
+        title: "SD Negeri Tunas Mekar",
+        accent: "Kota Cimahi",
+        paragraph1: "SD Negeri Tunas Mekar (NPSN: 20224021) didirikan pada tahun 1986 sebagai pemekaran dari SD Negeri Cibeureum 05 demi mengatasi kepadatan siswa. Sekolah ini berawal dari tanah hibah serta sumber dana swadaya masyarakat yang berlokasi tidak jauh dari sekolah induk.",
+        paragraph2: "Di bawah pimpinan Kepala Sekolah {kepsek}, kami berkomitmen menyelenggarakan pembelajaran inovatif berbasis Kurikulum Merdeka untuk mencetak generasi mandiri dan berintegritas.",
+        list: [
+            "Visi CERIA (Cerdas, Edukatif, Religius, Integritas, Adaptif)",
+            "Mengadopsi Penuh Kurikulum Merdeka",
+            "Dididik oleh {guru} Guru S1 & 3 Tenaga Kependidikan",
+            "Program Sekolah Ramah Anak & Berwawasan Adiwiyata"
+        ]
+    },
+    program: {
+        subtitle: "Program & Fasilitas",
+        title: "Metode Pembelajaran & Sarana",
+        text: "SD Negeri Tunas Mekar memadukan digitalisasi pembelajaran kreatif dengan sarana fisik terpadu dan pembentukan karakter kesiswaan.",
+        cards: [
+            {
+                title: "Jumat Rohani",
+                desc: "Program pembiasaan karakter keagamaan untuk membentuk akhlak mulia dan religius kesiswaan melalui kegiatan tadarus, doa bersama, dan pembiasaan shalat berjamaah secara rutin.",
+                link: "Program Karakter"
+            },
+            {
+                title: "Fasilitas Sekolah",
+                desc: "Didukung sarana prasarana penunjang kenyamanan KBM meliputi ruang Perpustakaan yang representatif, unit UKS, Mushola sekolah, serta Lapangan olahraga serbaguna yang bersih.",
+                link: "UKS, Perpus, Mushola"
+            },
+            {
+                title: "Eskul & Karakter",
+                desc: "Pengembangan minat kesiswaan secara teratur dengan menyelenggarakan kegiatan Pramuka Wajib (setiap hari Jumat) dan Futsal Berprestasi (setiap hari Sabtu).",
+                link: "Pramuka & Futsal"
+            }
+        ]
+    },
+    gallery: {
+        subtitle: "Momen Berharga",
+        title: "Galeri & Dokumentasi",
+        text: "Kumpulan foto dan video kegiatan pembelajaran, suasana sekolah, serta momen berharga siswa-siswi SDN Tunas Mekar."
+    },
+    infoSections: {
+        newsSubtitle: "Pembaruan",
+        newsTitle: "Berita Terbaru",
+        faqSubtitle: "Tanya Jawab",
+        faqTitle: "FAQ"
+    },
+    aspirasi: {
+        subtitle: "Suara Anda Penting",
+        title: "Sampaikan Aspirasi & Lacak Status",
+        text: "\"Setiap masukan adalah langkah menuju sekolah yang lebih baik.\" Sampaikan aspirasi Anda dan lacak perkembangannya secara transparan.",
+        formTitle: "Formulir Aspirasi",
+        trackerTitle: "Lacak Status Aspirasi",
+        trackerDesc: "Masukkan ID Tiket Aspirasi Anda untuk melihat perkembangan tindak lanjut secara real-time.",
+        recentTitle: "Aspirasi Publik Terbaru"
+    },
+    footer: {
+        description: "Membangun Generasi Cerdas dan Berkarakter. Sekolah berakreditasi Baik Sekali (B) yang berkomitmen memberikan pendidikan terbaik untuk masa depan gemilang.",
+        quickTitle: "Tautan Cepat",
+        contactTitle: "Kontak Kami",
+        address: "Jl. Jenderal H. Amir Machmud RT 03 RW 23, Kelurahan Cibeureum, Kecamatan Cimahi Selatan, Kota Cimahi, Jawa Barat (Kode Pos: 40535)",
+        npsn: "20224021",
+        hoursTitle: "Jam Operasional",
+        hoursText: "Jam masuk KBM pagi & Pembiasaan karakter:",
+        hoursTime: "Pukul 06:15 WIB s.d Selesai",
+        copyright: "© 2026 SDN Tunas Mekar. All rights reserved. | Administrator: Dera Nurkhusniah Drajat, S.Pd."
+    },
+    ppdb: {
+        modalTitle: "Info Pendaftaran Siswa Baru",
+        instruction: "Silakan lengkapi formulir pendaftaran PPDB online SDN Tunas Mekar di bawah ini. Tim kami akan menghubungi Anda setelah data diverifikasi secara lengkap.",
+        requirementsToggle: "Lihat Syarat Dokumen & Ketentuan Pendaftaran"
+    }
+};
+
 // 1. FUNGSI TOAST NOTIFICATION
 function showAdminToast(message, type = 'success') {
     const container = document.getElementById('adminToastContainer');
@@ -1425,6 +1564,154 @@ function showAdminToast(message, type = 'success') {
         toast.classList.remove('show');
         setTimeout(() => toast.remove(), 400);
     }, 3500);
+}
+
+function mergeContentDefaults(defaultValue, savedValue) {
+    if (Array.isArray(defaultValue)) {
+        return Array.isArray(savedValue) ? savedValue : defaultValue;
+    }
+
+    if (defaultValue && typeof defaultValue === 'object') {
+        const merged = {};
+        Object.keys(defaultValue).forEach((key) => {
+            merged[key] = mergeContentDefaults(defaultValue[key], savedValue ? savedValue[key] : undefined);
+        });
+        return merged;
+    }
+
+    return savedValue !== undefined && savedValue !== null ? savedValue : defaultValue;
+}
+
+function getWebsiteContent() {
+    let saved = {};
+    try {
+        saved = JSON.parse(localStorage.getItem(L_KEY_CONTENT) || '{}');
+    } catch (err) {
+        saved = {};
+    }
+    return mergeContentDefaults(defaultWebsiteContent, saved);
+}
+
+function saveWebsiteContent(content) {
+    localStorage.setItem(L_KEY_CONTENT, JSON.stringify(mergeContentDefaults(defaultWebsiteContent, content)));
+}
+
+function setText(selector, value) {
+    const el = document.querySelector(selector);
+    if (el) el.textContent = value;
+}
+
+function setAllText(selector, value) {
+    document.querySelectorAll(selector).forEach((el) => {
+        el.textContent = value;
+    });
+}
+
+function renderTemplateText(template, replacements = {}) {
+    let text = template || '';
+    Object.entries(replacements).forEach(([key, value]) => {
+        text = text.replaceAll(`{${key}}`, value);
+    });
+    return text;
+}
+
+function renderWebsiteContent() {
+    const content = getWebsiteContent();
+    const stats = JSON.parse(localStorage.getItem(L_KEY_STATS) || JSON.stringify(defaultStats));
+    const info = JSON.parse(localStorage.getItem(L_KEY_INFO) || JSON.stringify(defaultInfo));
+
+    setAllText('.logo span, .footer-logo span', content.siteName);
+
+    const heroBadge = document.querySelector('.hero-badge');
+    if (heroBadge) heroBadge.innerHTML = `<i class='bx bxs-star'></i> ${escapeHTML(content.hero.badge)}`;
+    const heroTitle = document.querySelector('.hero-title');
+    if (heroTitle) {
+        heroTitle.innerHTML = `${escapeHTML(content.hero.titleBefore)} <span>${escapeHTML(content.hero.highlight1)}</span> ${escapeHTML(content.hero.titleMiddle)} <span>${escapeHTML(content.hero.highlight2)}</span>`;
+    }
+    setText('.hero-description', content.hero.description);
+    setText('.hero-buttons .btn-primary', content.hero.primaryButton);
+    setAllText('.btn-open-reg', content.hero.primaryButton);
+    setText('.hero-buttons .btn-outline', content.hero.secondaryButton);
+    setText('.floating-card.card-1 h4', content.hero.card1Title);
+    setText('.floating-card.card-1 p', content.hero.card1Desc);
+    setText('.floating-card.card-2 h4', content.hero.card2Title);
+    setText('.floating-card.card-2 p', content.hero.card2Desc);
+
+    setText('.tentang-data .section-subtitle', content.about.subtitle);
+    const aboutTitle = document.querySelector('.tentang-data .section-title');
+    if (aboutTitle) {
+        aboutTitle.innerHTML = `${escapeHTML(content.about.title)} <span>${escapeHTML(content.about.accent)}</span>`;
+    }
+    const aboutParagraphs = document.querySelectorAll('.tentang-description');
+    if (aboutParagraphs[0]) aboutParagraphs[0].textContent = content.about.paragraph1;
+    if (aboutParagraphs[1]) {
+        const para2 = renderTemplateText(content.about.paragraph2, { kepsek: info.kepsek });
+        aboutParagraphs[1].innerHTML = escapeHTML(para2)
+            .replace(escapeHTML(info.kepsek), `<strong>${escapeHTML(info.kepsek)}</strong>`)
+            .replace('Kurikulum Merdeka', '<strong>Kurikulum Merdeka</strong>');
+    }
+    const tentangList = document.querySelector('.tentang-list');
+    if (tentangList) {
+        tentangList.innerHTML = '';
+        content.about.list.forEach((item) => {
+            const li = document.createElement('li');
+            li.innerHTML = `<i class='bx bx-check-circle'></i> ${escapeHTML(renderTemplateText(item, { guru: stats.guru }))}`;
+            tentangList.appendChild(li);
+        });
+    }
+
+    setText('#program .section-subtitle', content.program.subtitle);
+    setText('#program .section-title', content.program.title);
+    setText('#program .section-text', content.program.text);
+    document.querySelectorAll('.keunggulan-card').forEach((card, index) => {
+        const item = content.program.cards[index];
+        if (!item) return;
+        const title = card.querySelector('.keunggulan-title');
+        const desc = card.querySelector('.keunggulan-desc');
+        const link = card.querySelector('.btn-link');
+        if (title) title.textContent = item.title;
+        if (desc) desc.textContent = item.desc;
+        if (link) link.innerHTML = `${escapeHTML(item.link)} <i class='bx bx-right-arrow-alt'></i>`;
+    });
+
+    setText('#galeri .section-subtitle', content.gallery.subtitle);
+    setText('#galeri .section-title', content.gallery.title);
+    setText('#galeri .section-text', content.gallery.text);
+
+    setText('.berita-section .section-subtitle', content.infoSections.newsSubtitle);
+    setText('.berita-section .section-title', content.infoSections.newsTitle);
+    setText('.faq-section .section-subtitle', content.infoSections.faqSubtitle);
+    setText('.faq-section .section-title', content.infoSections.faqTitle);
+
+    setText('#aspirasi .section-subtitle', content.aspirasi.subtitle);
+    setText('#aspirasi .section-title', content.aspirasi.title);
+    setText('#aspirasi .section-text', content.aspirasi.text);
+    const aspirasiFormTitle = document.querySelector('.aspirasi-card:nth-child(1) .aspirasi-card-title');
+    if (aspirasiFormTitle) aspirasiFormTitle.innerHTML = `<i class='bx bx-edit-alt'></i> ${escapeHTML(content.aspirasi.formTitle)}`;
+    const aspirasiTrackerTitle = document.querySelector('.aspirasi-card:nth-child(2) .aspirasi-card-title');
+    if (aspirasiTrackerTitle) aspirasiTrackerTitle.innerHTML = `<i class='bx bx-search-alt'></i> ${escapeHTML(content.aspirasi.trackerTitle)}`;
+    setText('.tracker-desc', content.aspirasi.trackerDesc);
+    setText('.recent-title', content.aspirasi.recentTitle);
+
+    setText('.footer-description', content.footer.description);
+    setText('.footer-content:nth-child(2) .footer-title', content.footer.quickTitle);
+    setText('.footer-content:nth-child(3) .footer-title', content.footer.contactTitle);
+    setText('.footer-content:nth-child(4) .footer-title', content.footer.hoursTitle);
+    setText('.footer-newsletter-text', content.footer.hoursText);
+    const footerContact = document.querySelectorAll('.footer-contact li');
+    if (footerContact[0]) footerContact[0].innerHTML = `<i class='bx bx-map'></i> ${escapeHTML(content.footer.address)}`;
+    if (footerContact[1]) footerContact[1].innerHTML = `<i class='bx bx-badge-check'></i> NPSN: ${escapeHTML(content.footer.npsn)}`;
+    const hoursBox = document.querySelector('.footer-content:nth-child(4) div[style*="primary-color-soft"]');
+    if (hoursBox) hoursBox.innerHTML = `<i class='bx bx-time' style="font-size: 20px;"></i> ${escapeHTML(content.footer.hoursTime)}`;
+    setText('.footer-bottom p', content.footer.copyright);
+
+    const modalTitle = document.querySelector('.modal-title');
+    if (modalTitle) modalTitle.innerHTML = `<i class='bx bxs-graduation'></i> ${escapeHTML(content.ppdb.modalTitle)}`;
+    setText('.form-instruction', content.ppdb.instruction);
+    setText('#requirementsToggle span', content.ppdb.requirementsToggle);
+    if (modalBody && modalBody.querySelector('#registrationForm')) {
+        originalModalHTML = modalBody.innerHTML;
+    }
 }
 
 // 2. DETEKTOR 5 KLIK LOGO
@@ -1605,6 +1892,22 @@ function initLocalState() {
     if (!localStorage.getItem(L_KEY_POSTERS)) {
         localStorage.setItem(L_KEY_POSTERS, JSON.stringify(defaultRegistrationPosters));
     }
+
+    // 10. Inisialisasi Konten Website
+    if (!localStorage.getItem(L_KEY_CONTENT)) {
+        saveWebsiteContent(defaultWebsiteContent);
+    }
+
+    // 11. Inisialisasi Supabase dari konfigurasi bawaan kode
+    if (DEFAULT_SUPABASE_CONFIG.url && !localStorage.getItem(L_KEY_SUPABASE_URL)) {
+        localStorage.setItem(L_KEY_SUPABASE_URL, DEFAULT_SUPABASE_CONFIG.url);
+    }
+    if (DEFAULT_SUPABASE_CONFIG.key && !localStorage.getItem(L_KEY_SUPABASE_KEY)) {
+        localStorage.setItem(L_KEY_SUPABASE_KEY, DEFAULT_SUPABASE_CONFIG.key);
+    }
+    if (DEFAULT_SUPABASE_CONFIG.bucket && !localStorage.getItem(L_KEY_SUPABASE_BUCKET)) {
+        localStorage.setItem(L_KEY_SUPABASE_BUCKET, DEFAULT_SUPABASE_CONFIG.bucket);
+    }
 }
 
 // Render data statis dan berita ke halaman publik
@@ -1696,6 +1999,175 @@ function renderPublicUI() {
     
     if (navKaldik) navKaldik.setAttribute('href', kaldikUrl);
     if (footerKaldik) footerKaldik.setAttribute('href', kaldikUrl);
+
+    renderWebsiteContent();
+}
+
+function setFieldValue(id, value) {
+    const field = document.getElementById(id);
+    if (field) field.value = value ?? '';
+}
+
+function getFieldValue(id) {
+    return (document.getElementById(id)?.value || '').trim();
+}
+
+function loadAdminContentForm() {
+    const content = getWebsiteContent();
+
+    setFieldValue('contentSiteName', content.siteName);
+    setFieldValue('contentHeroBadge', content.hero.badge);
+    setFieldValue('contentHeroTitleBefore', content.hero.titleBefore);
+    setFieldValue('contentHeroHighlight1', content.hero.highlight1);
+    setFieldValue('contentHeroTitleMiddle', content.hero.titleMiddle);
+    setFieldValue('contentHeroHighlight2', content.hero.highlight2);
+    setFieldValue('contentHeroDescription', content.hero.description);
+    setFieldValue('contentHeroPrimary', content.hero.primaryButton);
+    setFieldValue('contentHeroSecondary', content.hero.secondaryButton);
+    setFieldValue('contentHeroCard1Title', content.hero.card1Title);
+    setFieldValue('contentHeroCard1Desc', content.hero.card1Desc);
+    setFieldValue('contentHeroCard2Title', content.hero.card2Title);
+    setFieldValue('contentHeroCard2Desc', content.hero.card2Desc);
+
+    setFieldValue('contentAboutSubtitle', content.about.subtitle);
+    setFieldValue('contentAboutTitle', content.about.title);
+    setFieldValue('contentAboutAccent', content.about.accent);
+    setFieldValue('contentAboutP1', content.about.paragraph1);
+    setFieldValue('contentAboutP2', content.about.paragraph2);
+    setFieldValue('contentAboutList', content.about.list.join('\n'));
+
+    setFieldValue('contentProgramSubtitle', content.program.subtitle);
+    setFieldValue('contentProgramTitle', content.program.title);
+    setFieldValue('contentProgramText', content.program.text);
+    content.program.cards.forEach((card, index) => {
+        const n = index + 1;
+        setFieldValue(`contentProgramCard${n}Title`, card.title);
+        setFieldValue(`contentProgramCard${n}Desc`, card.desc);
+        setFieldValue(`contentProgramCard${n}Link`, card.link);
+    });
+
+    setFieldValue('contentGalleryTitle', content.gallery.title);
+    setFieldValue('contentGallerySubtitle', content.gallery.subtitle);
+    setFieldValue('contentGalleryText', content.gallery.text);
+    setFieldValue('contentNewsTitle', content.infoSections.newsTitle);
+    setFieldValue('contentNewsSubtitle', content.infoSections.newsSubtitle);
+    setFieldValue('contentFaqTitle', content.infoSections.faqTitle);
+    setFieldValue('contentFaqSubtitle', content.infoSections.faqSubtitle);
+    setFieldValue('contentAspirasiTitle', content.aspirasi.title);
+    setFieldValue('contentAspirasiSubtitle', content.aspirasi.subtitle);
+    setFieldValue('contentAspirasiText', content.aspirasi.text);
+    setFieldValue('contentAspirasiFormTitle', content.aspirasi.formTitle);
+    setFieldValue('contentAspirasiTrackerTitle', content.aspirasi.trackerTitle);
+    setFieldValue('contentAspirasiTrackerDesc', content.aspirasi.trackerDesc);
+    setFieldValue('contentAspirasiRecentTitle', content.aspirasi.recentTitle);
+
+    setFieldValue('contentFooterDescription', content.footer.description);
+    setFieldValue('contentFooterAddress', content.footer.address);
+    setFieldValue('contentFooterNpsn', content.footer.npsn);
+    setFieldValue('contentFooterHoursTitle', content.footer.hoursTitle);
+    setFieldValue('contentFooterHoursText', content.footer.hoursText);
+    setFieldValue('contentFooterHoursTime', content.footer.hoursTime);
+    setFieldValue('contentFooterCopyright', content.footer.copyright);
+    setFieldValue('contentPpdbTitle', content.ppdb.modalTitle);
+    setFieldValue('contentPpdbToggle', content.ppdb.requirementsToggle);
+    setFieldValue('contentPpdbInstruction', content.ppdb.instruction);
+}
+
+function collectAdminContentForm() {
+    const current = getWebsiteContent();
+    return {
+        siteName: getFieldValue('contentSiteName'),
+        hero: {
+            badge: getFieldValue('contentHeroBadge'),
+            titleBefore: getFieldValue('contentHeroTitleBefore'),
+            highlight1: getFieldValue('contentHeroHighlight1'),
+            titleMiddle: getFieldValue('contentHeroTitleMiddle'),
+            highlight2: getFieldValue('contentHeroHighlight2'),
+            description: getFieldValue('contentHeroDescription'),
+            primaryButton: getFieldValue('contentHeroPrimary'),
+            secondaryButton: getFieldValue('contentHeroSecondary'),
+            card1Title: getFieldValue('contentHeroCard1Title'),
+            card1Desc: getFieldValue('contentHeroCard1Desc'),
+            card2Title: getFieldValue('contentHeroCard2Title'),
+            card2Desc: getFieldValue('contentHeroCard2Desc')
+        },
+        about: {
+            subtitle: getFieldValue('contentAboutSubtitle'),
+            title: getFieldValue('contentAboutTitle'),
+            accent: getFieldValue('contentAboutAccent'),
+            paragraph1: getFieldValue('contentAboutP1'),
+            paragraph2: getFieldValue('contentAboutP2'),
+            list: getFieldValue('contentAboutList').split('\n').map(item => item.trim()).filter(Boolean)
+        },
+        program: {
+            subtitle: getFieldValue('contentProgramSubtitle'),
+            title: getFieldValue('contentProgramTitle'),
+            text: getFieldValue('contentProgramText'),
+            cards: [1, 2, 3].map((n) => ({
+                title: getFieldValue(`contentProgramCard${n}Title`),
+                desc: getFieldValue(`contentProgramCard${n}Desc`),
+                link: getFieldValue(`contentProgramCard${n}Link`)
+            }))
+        },
+        gallery: {
+            ...current.gallery,
+            title: getFieldValue('contentGalleryTitle'),
+            subtitle: getFieldValue('contentGallerySubtitle'),
+            text: getFieldValue('contentGalleryText')
+        },
+        infoSections: {
+            ...current.infoSections,
+            newsSubtitle: getFieldValue('contentNewsSubtitle'),
+            newsTitle: getFieldValue('contentNewsTitle'),
+            faqSubtitle: getFieldValue('contentFaqSubtitle'),
+            faqTitle: getFieldValue('contentFaqTitle')
+        },
+        aspirasi: {
+            ...current.aspirasi,
+            title: getFieldValue('contentAspirasiTitle'),
+            subtitle: getFieldValue('contentAspirasiSubtitle'),
+            text: getFieldValue('contentAspirasiText'),
+            formTitle: getFieldValue('contentAspirasiFormTitle'),
+            trackerTitle: getFieldValue('contentAspirasiTrackerTitle'),
+            trackerDesc: getFieldValue('contentAspirasiTrackerDesc'),
+            recentTitle: getFieldValue('contentAspirasiRecentTitle')
+        },
+        footer: {
+            ...current.footer,
+            description: getFieldValue('contentFooterDescription'),
+            address: getFieldValue('contentFooterAddress'),
+            npsn: getFieldValue('contentFooterNpsn'),
+            hoursTitle: getFieldValue('contentFooterHoursTitle'),
+            hoursText: getFieldValue('contentFooterHoursText'),
+            hoursTime: getFieldValue('contentFooterHoursTime'),
+            copyright: getFieldValue('contentFooterCopyright')
+        },
+        ppdb: {
+            ...current.ppdb,
+            modalTitle: getFieldValue('contentPpdbTitle'),
+            requirementsToggle: getFieldValue('contentPpdbToggle'),
+            instruction: getFieldValue('contentPpdbInstruction')
+        }
+    };
+}
+
+const adminContentForm = document.getElementById('adminContentForm');
+if (adminContentForm) {
+    adminContentForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const content = collectAdminContentForm();
+        saveWebsiteContent(content);
+        renderPublicUI();
+        showAdminToast('Konten website berhasil diperbarui!', 'success');
+    });
+}
+
+function resetWebsiteContent() {
+    if (!confirm('Pulihkan seluruh teks website ke konten bawaan? Perubahan konten yang tersimpan akan hilang.')) return;
+    saveWebsiteContent(defaultWebsiteContent);
+    loadAdminContentForm();
+    renderPublicUI();
+    showAdminToast('Konten website bawaan berhasil dipulihkan!', 'success');
 }
 
 // Memuat data ke form dan tabel di Dashboard Admin
@@ -1733,26 +2205,13 @@ function loadAdminDashboardData() {
     if (dbProfileImageUrl) dbProfileImageUrl.value = savedProfileImage;
     if (dbProfileSubImageUrl) dbProfileSubImageUrl.value = savedProfileSubImage;
     
-    // Pre-fill Form GAS Upload URL
-    const dbInfoGasUrl = document.getElementById('dbInfoGasUrl');
-    if (dbInfoGasUrl) {
-        dbInfoGasUrl.value = localStorage.getItem(L_KEY_GAS_URL) || '';
-    }
-
-    // Pre-fill Konfigurasi Supabase
-    const dbSupabaseUrl    = document.getElementById('dbSupabaseUrl');
-    const dbSupabaseKey    = document.getElementById('dbSupabaseKey');
-    const dbSupabaseBucket = document.getElementById('dbSupabaseBucket');
-    if (dbSupabaseUrl)    dbSupabaseUrl.value    = localStorage.getItem(L_KEY_SUPABASE_URL)    || '';
-    if (dbSupabaseKey)    dbSupabaseKey.value    = localStorage.getItem(L_KEY_SUPABASE_KEY)    || '';
-    if (dbSupabaseBucket) dbSupabaseBucket.value = localStorage.getItem(L_KEY_SUPABASE_BUCKET) || 'gallery';
-    
     // Render Tabel PPDB, Aspirasi & Berita di Admin
     renderAdminAspirations();
     renderAdminNews();
     renderAdminPPDB();
     renderAdminPosters();
     renderAdminGaleri();
+    loadAdminContentForm();
     setupProfileImageUploadZones();
     setupPosterUploadZone();
     setupGaleriUploadZone();
@@ -2095,21 +2554,26 @@ function setupProfileImageUploadZones() {
         'previewFileProfileSubImage', 'nameFileProfileSubImage', 'sizeFileProfileSubImage',
         'removeFileProfileSubImage', 'FileProfileSubImage', 5
     );
+    setupFileUploadZone(
+        'zoneFileKaldik', 'fileKaldik',
+        'previewFileKaldik', 'nameFileKaldik', 'sizeFileKaldik',
+        'removeFileKaldik', 'FileKaldik', 10
+    );
 }
 
-async function uploadProfileImageToSupabase(fileKey, currentValue, label) {
+async function uploadAdminFileToSupabase(fileKey, currentValue, label) {
     const file = selectedFiles[fileKey];
     if (!file) return currentValue;
 
     if (!isSupabaseConfigured()) {
-        throw new Error(`Supabase belum dikonfigurasi. Isi Supabase URL, Anon Key, dan Bucket terlebih dahulu sebelum mengunggah ${label}.`);
+        throw new Error(`Supabase belum siap. Periksa DEFAULT_SUPABASE_CONFIG di script.js sebelum mengunggah ${label}.`);
     }
 
     return uploadFileToSupabase(file);
 }
 
 function clearProfileImageUploadPreviews() {
-    ['HeroImage', 'ProfileImage', 'ProfileSubImage'].forEach((suffix) => {
+    ['HeroImage', 'ProfileImage', 'ProfileSubImage', 'Kaldik'].forEach((suffix) => {
         const preview = document.getElementById(`previewFile${suffix}`);
         const input = document.getElementById(`file${suffix}`);
         if (preview) preview.style.display = 'none';
@@ -2119,6 +2583,7 @@ function clearProfileImageUploadPreviews() {
     selectedFiles.FileHeroImage = null;
     selectedFiles.FileProfileImage = null;
     selectedFiles.FileProfileSubImage = null;
+    selectedFiles.FileKaldik = null;
 }
 
 // 9. PANEL UPDATE STATISTIK & INFO KONTAK
@@ -2146,38 +2611,26 @@ if (adminProfileForm) {
         const newInfo = { kepsek, phone, email, instagram };
         localStorage.setItem(L_KEY_INFO, JSON.stringify(newInfo));
         
-        // 4.5. Simpan Kalender
-        const newKaldikUrl = document.getElementById('dbInfoKaldikUrl').value.trim();
-        if (newKaldikUrl) {
-            localStorage.setItem(L_KEY_KALDIK_URL, newKaldikUrl);
-        }
+        // 4.5. Simpan Kalender Akademik (URL manual atau upload PDF ke Supabase)
+        let newKaldikUrl = document.getElementById('dbInfoKaldikUrl').value.trim();
 
-        // 4.6. Simpan Google Apps Script URL
-        const dbInfoGasUrl = document.getElementById('dbInfoGasUrl');
-        if (dbInfoGasUrl) {
-            localStorage.setItem(L_KEY_GAS_URL, dbInfoGasUrl.value.trim());
-        }
-
-        // 4.7. Simpan Konfigurasi Supabase
-        const dbSupabaseUrl    = document.getElementById('dbSupabaseUrl');
-        const dbSupabaseKey    = document.getElementById('dbSupabaseKey');
-        const dbSupabaseBucket = document.getElementById('dbSupabaseBucket');
-        if (dbSupabaseUrl)    localStorage.setItem(L_KEY_SUPABASE_URL, dbSupabaseUrl.value.trim());
-        if (dbSupabaseKey)    localStorage.setItem(L_KEY_SUPABASE_KEY, dbSupabaseKey.value.trim());
-        if (dbSupabaseBucket) localStorage.setItem(L_KEY_SUPABASE_BUCKET, (dbSupabaseBucket.value.trim() || 'gallery'));
-
-        // 4.8. Simpan Foto Hero & Profil (dropdown atau upload Supabase)
+        // 4.6. Simpan Foto Hero & Profil (dropdown atau upload Supabase)
         let heroImageUrl = document.getElementById('dbHeroImageUrl')?.value.trim() || defaultHeroImage;
         let profileImageUrl = document.getElementById('dbProfileImageUrl')?.value.trim() || defaultProfileImage;
         let profileSubImageUrl = document.getElementById('dbProfileSubImageUrl')?.value.trim() || defaultProfileSubImage;
 
         try {
-            heroImageUrl = await uploadProfileImageToSupabase('FileHeroImage', heroImageUrl, 'foto hero');
-            profileImageUrl = await uploadProfileImageToSupabase('FileProfileImage', profileImageUrl, 'foto profil utama');
-            profileSubImageUrl = await uploadProfileImageToSupabase('FileProfileSubImage', profileSubImageUrl, 'foto profil pendamping');
+            newKaldikUrl = await uploadAdminFileToSupabase('FileKaldik', newKaldikUrl, 'PDF kalender akademik');
+            heroImageUrl = await uploadAdminFileToSupabase('FileHeroImage', heroImageUrl, 'foto hero');
+            profileImageUrl = await uploadAdminFileToSupabase('FileProfileImage', profileImageUrl, 'foto profil utama');
+            profileSubImageUrl = await uploadAdminFileToSupabase('FileProfileSubImage', profileSubImageUrl, 'foto profil pendamping');
         } catch (err) {
-            showCustomAlert("Upload Foto Gagal", err.message, "error");
+            showCustomAlert("Upload Supabase Gagal", err.message, "error");
             return;
+        }
+
+        if (newKaldikUrl) {
+            localStorage.setItem(L_KEY_KALDIK_URL, newKaldikUrl);
         }
 
         localStorage.setItem(L_KEY_HERO_IMAGE, heroImageUrl);
@@ -2215,6 +2668,7 @@ function resetFactorySettings() {
     localStorage.removeItem(L_KEY_PROFILE_IMAGE);
     localStorage.removeItem(L_KEY_PROFILE_SUB_IMAGE);
     localStorage.removeItem(L_KEY_POSTERS);
+    localStorage.removeItem(L_KEY_CONTENT);
     
     // Tutup Modal
     const dbModal = document.getElementById('adminDashboardModal');
@@ -2452,13 +2906,7 @@ async function resolvePosterSource(file, manualUrl, submitBtn) {
         });
     }
 
-    const gasUrl = localStorage.getItem(L_KEY_GAS_URL) || '';
-    if (gasUrl) {
-        if (submitBtn) submitBtn.innerHTML = `<i class='bx bx-loader-alt bx-spin'></i> Mengunggah ke Drive...`;
-        return uploadFileToGAS(gasUrl, file);
-    }
-
-    return `asset/${file.name}`;
+    throw new Error('Supabase belum siap. Periksa DEFAULT_SUPABASE_CONFIG di script.js sebelum upload poster.');
 }
 
 function bindAdminPosterForm() {
@@ -2703,7 +3151,7 @@ function bindAdminGaleriForm() {
 
         let src = urlInp;
 
-        // Prioritas upload: Supabase > Google Apps Script > fallback nama file
+        // Prioritas upload: Supabase > Google Apps Script > Data URL lokal untuk gambar
         if (file) {
             if (isSupabaseConfigured()) {
                 try {
@@ -2739,8 +3187,16 @@ function bindAdminGaleriForm() {
                     // Tanya user: mau coba lagi atau pakai path lokal saja?
                     const wantFallback = await showGaleriFallbackPrompt(err.message + helpText);
                     if (wantFallback) {
-                        // Simpan dengan filename sebagai path lokal (file harus sudah ada di asset/)
-                        src = `asset/${file.name}`;
+                        if ((file.type || '').startsWith('image/')) {
+                            src = await readFileAsDataUrl(file);
+                        } else {
+                            showCustomAlert(
+                                "Video Perlu URL Publik",
+                                "Fallback lokal hanya tersedia untuk gambar. Untuk video, gunakan Supabase Storage atau tempel URL video publik.",
+                                "warning"
+                            );
+                            return;
+                        }
                     } else {
                         return;
                     }
@@ -2758,6 +3214,9 @@ function bindAdminGaleriForm() {
                         showCustomAlert("Gagal Mengunggah", `Gagal mengunggah berkas: <strong>${err.message}</strong>`, "error");
                         return;
                     }
+                } else if ((file.type || '').startsWith('image/')) {
+                    btnSubmit.innerHTML = `<i class='bx bx-loader-alt bx-spin'></i> Menyiapkan foto lokal...`;
+                    src = await readFileAsDataUrl(file);
                 } else {
                     // Tanpa Supabase & GAS: tampilkan peringatan & sarankan path manual
                     btnSubmit.innerHTML = originalText;
@@ -2854,7 +3313,11 @@ function renderPublicGaleri() {
         let contentHTML;
         if (isPhoto) {
             contentHTML = `
-                <img src="${item.src}" alt="${item.title}" loading="lazy">
+                <img src="${escapeHTML(item.src)}" alt="${escapeHTML(item.title)}" loading="lazy" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                <div class="gallery-load-error" style="display:none; align-items:center; justify-content:center; flex-direction:column; gap:8px; width:100%; height:100%; min-height:180px; padding:18px; color:#777; background:#fff7f7; text-align:center;">
+                    <i class='bx bx-image-alt' style="font-size:34px; color:#c1121f;"></i>
+                    <span style="font-size:13px; font-weight:600;">Gambar tidak dapat dimuat</span>
+                </div>
                 <div class="gallery-overlay">
                     <span class="gallery-tag"><i class='bx bx-image'></i> Foto</span>
                     <i class='bx bx-search-alt-2'></i>
